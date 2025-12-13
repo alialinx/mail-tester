@@ -23,41 +23,42 @@ def imap_conn():
 
 
 def get_email_from_imap(to_address):
-
     imap = imap_conn()
 
-    search_query = ('OR 'f'(HEADER To "{to_address}") 'f'(HEADER X-Original-To "{to_address}")')
+    # Önce X-Original-To ile ara (en sağlam)
+    status, data = imap.search(
+        None,
+        'HEADER', 'X-Original-To', to_address
+    )
 
-    status, data = imap.search(None, search_query)
+    if status == "OK" and data[0]:
+        mail_id = data[0].split()[-1]
 
-    if status != 'OK':
-        imap.close()
-        imap.logout()
-        return None
+    else:
+        # Olmazsa To header'dan ara
+        status, data = imap.search(
+            None,
+            'HEADER', 'To', to_address
+        )
 
-    mail_id = data[0].split()[-1]
+        if status != "OK" or not data[0]:
+            imap.logout()
+            return None
 
-    if not mail_id:
-        imap.close()
-        imap.logout()
-        return None
-
+        mail_id = data[0].split()[-1]
 
     status, msg_data = imap.fetch(mail_id, '(RFC822)')
-
-    if status != 'OK':
+    if status != "OK":
+        imap.logout()
         return None
 
     raw_email = msg_data[0][1]
-
     msg = email.message_from_bytes(raw_email)
-    print(msg)
 
-    imap.close()
     imap.logout()
-
     return msg
 
 
+# get_email_from_imap("test-f156eeec839694341414@ozenses.com")
 
 
