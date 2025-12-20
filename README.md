@@ -3,13 +3,13 @@
 Mail Tester is a simple service that checks the quality and deliverability of outgoing emails.
 
 Users send an email to a temporary test address.  
-The system receives the email, analyzes it, and returns a clear score with explanations.
+The system receives the email, analyzes it in the background using Celery, and returns a score with explanations.
 
 ---
 
 ## What This Tool Does
 
-Mail Tester helps you understand **why an email may fail or succeed**.
+Mail Tester helps you understand why an email may fail or succeed.
 
 You can test:
 
@@ -25,34 +25,49 @@ You can test:
 
 ## How It Works
 
-1. The user clicks **Generate Test Email**
+1. The user calls Generate Test Email.
 2. The system creates a unique temporary email address, for example:
 
-test-a92bd12f98bc4@yourdomain.com
+   test-a92bd12f98bc4@yourdomain.com
 
+3. The system stores the generated address in MongoDB with status `pending`.
+4. The user sends an email to the generated test address.
+5. A Celery worker polls the mailbox via IMAP until the email arrives.
+6. When the email is received, it is analyzed and stored.
+7. The user requests the result and receives the score and report.
 
-
-
-3. The user sends an email to this address
-4. The server receives the email via IMAP
-5. The system analyzes the email:
-   - Read email headers
-   - Extract metadata
-   - Detect sender IP
-   - Check SPF, DKIM, DMARC
-   - Check reverse DNS
-   - Check IP blacklists
-   - Run basic content checks
-6. A **score (0–10)** and a detailed report are returned to the user
-
-The system does **not** access the user’s mailbox.  
+The system does not access the user’s mailbox.  
 The user only sends an email to the generated test address.
+
+---
+
+## Background Processing (Celery)
+
+Mail Tester uses Celery for asynchronous background processing.
+
+- The API never waits for incoming emails
+- Email retrieval and analysis run in background workers
+- The API remains fast and non-blocking
+- All state and results are stored in MongoDB
+- Redis is used as broker and result backend
+
+---
+
+## Result Statuses
+
+GET /result/{to_address} may return:
+
+- `pending` – address created, worker not started yet
+- `processing` – worker is waiting for the email
+- `analyzed` – analysis completed successfully
+- `expired` – test address expired
+- `error` – an error occurred during processing
 
 ---
 
 ## Scoring System
 
-- Every email starts with **10 points**
+- Every email starts with 10 points
 - Points are reduced when problems are detected
 - Each issue clearly explains:
   - What is wrong
@@ -69,23 +84,123 @@ The user only sends an email to the generated test address.
 
 ### Final Score Meaning
 
-- **9–10** → Excellent
-- **7–8.9** → Good
-- **5–6.9** → Average
-- **Below 5** → Poor
+- 9–10 → Excellent
+- 7–8.9 → Good
+- 5–6.9 → Average
+- Below 5 → Poor
 
 ---
 
-## Features
+## Quickstart (Docker)
 
-- Generate one-time test email addresses
-- Receive emails using IMAP
-- Parse email headers and content
-- DNS checks (SPF / DKIM / DMARC)
-- Reverse DNS validation
-- IP blacklist checks
-- Simple, transparent scoring system
-- Clear explanations for each issue
+### Requirements
+
+- Docker Desktop (Windows/macOS) or Docker Engine (Linux)
+- A working domain
+- IMAP mailbox credentials to receive test emails
 
 ---
 
+### 1) Configure environment variables
+
+Create a `.env` file in the project root:
+
+MONGO_HOST=
+MONGO_PORT=
+MONGO_DB_NAME=
+MONGO_DB_USER=
+MONGO_DB_PASS=
+MONGO_AUTH_SOURCE=
+
+DOMAIN=
+IMAP_HOST=
+IMAP_PORT=
+IMAP_EMAIL=
+IMAP_PASSWORD=
+IMAP_FOLDER=
+
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/1
+
+---
+
+### 2) Start the application
+
+Mail Tester is designed to run fully with Docker.
+
+Run this command in the project root:
+
+docker compose up --build
+
+---
+
+### What this does
+
+This single command:
+
+- Builds the API image
+- Builds the Celery worker image
+- Starts MongoDB
+- Starts Redis
+- Starts all services in the correct order
+- Connects all services using Docker networking
+
+No manual setup is required.
+
+---
+
+### Services started
+
+- FastAPI API
+  - Runs with Uvicorn inside the container
+  - Exposes port 8000
+  - Handles all HTTP requests
+
+- Celery Worker
+  - Runs in the background
+  - Polls the mailbox via IMAP
+  - Analyzes emails
+  - Stores results in MongoDB
+
+- Redis
+  - Message broker for Celery
+  - Result backend for Celery
+
+- MongoDB
+  - Stores test emails
+  - Stores processing state
+  - Stores analysis results
+
+---
+
+### Accessing the API
+
+Once everything is running, open:
+
+http://localhost:8000
+
+Swagger UI will be available on the root page.
+
+---
+
+## Usage Flow
+
+1. Call POST /generate
+2. Receive a temporary test email address
+3. Send an email to that address
+4. Poll GET /result/{to_address}
+5. When status is `analyzed`, read the result
+
+---
+
+
+## Summary
+
+Mail Tester is built as an asynchronous system.
+
+- FastAPI handles HTTP requests
+- Celery processes emails in the background
+- Redis coordinates tasks
+- MongoDB stores results
+
+This architecture is designed for safe, scalable, and non-blocking email analysis.
