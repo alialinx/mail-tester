@@ -3,8 +3,6 @@ from src.processor.score import Score
 from src.processor.service import check_spf_record, check_dkim_record,check_dmarc_record,check_rdns,check_blacklists
 
 
-msg = get_email_from_imap("test-f156eeec839694341414@ozenses.com")
-
 class Analyzer:
     def __init__(self, email_message,domain,sender_ip=None):
         self.msg = email_message
