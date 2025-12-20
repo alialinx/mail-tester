@@ -1,5 +1,11 @@
 # app/main.py
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
+from starlette.staticfiles import StaticFiles
+
+from src.worker.tasks import pull_and_analyze
+from bson import ObjectId
 from fastapi import FastAPI, APIRouter, Depends
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security import HTTPBasic
@@ -43,42 +49,64 @@ app.add_middleware(
 # Router
 router = APIRouter()
 
-@router.get("/test", tags=["test"])
-def get_aaa(db=Depends(get_db)):
-    result = list(db.test_emails.find())
-
-    for res in result:
-        res["_id"] = str(res["_id"])
-
-    return {"result": result}
-
-
 @router.post("/generate", tags=["Generate"])
-def generate_random():
+def generate_random(db=Depends(get_db)):
 
-    result = generate_random_email()
-    return {"result": result}
+    to_address = generate_random_email()
 
+    now = datetime.now(timezone.utc)
 
-@router.post("/analyze/{to_address}", summary="Analyze", tags=["Analyze"])
-def analyze(to_address: str, db=Depends(get_db)):
+    doc = {
+        "to_address": to_address,
+        "status": "pending",
+        "created_at": now,
+        "expires_at": now + timedelta(hours=24),
+        "receiver_at":None,
+        "analysis_id":None,
+        "last_error":None
 
-    msg = get_email_from_imap(to_address)
+    }
+    db.test_emails.insert_one(doc)
+    pull_and_analyze.delay(to_address)
 
-    from_header = msg.get("From")
-    domain = from_header.split("@")[-1].replace(">", "").strip()
+    return {"result": to_address}
 
-    sender_ip = get_sender_ip(msg)
+@router.get("/result/{to_address}", tags=["result"])
+def get_result(to_address:str,db=Depends(get_db)):
 
-    analyzer = Analyzer(email_message=msg,domain=domain,sender_ip=sender_ip)
-    result = analyzer.analyze()
+    email = db.test_emails.find_one({"to_address": to_address})
 
+    if not email:
+        return {"status":"not found"}
 
-    db.analyses.insert_one(result)
+    expires_at = email.get("expires_at")
+    if expires_at:
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
 
+        if expires_at < datetime.now(timezone.utc):
+            return {"status": "expired"}
 
-    return {"result": result}
+    status = email["status"]
+    if status != "analyzed":
+        if status != "analyzed":
+            return {
+                "status": status,
+                "to_address": email.get("to_address"),
+                "created_at": email.get("created_at"),
+                "expires_at": email.get("expires_at"),
+                "receiver_at": email.get("receiver_at"),
+                "last_error": email.get("last_error"),
+                "analysis_id": email.get("analysis_id"),
+            }
 
+    analysis = db.analyses.find_one({"_id": ObjectId(email["analysis_id"])})
+
+    if not analysis:
+        return {"status":"analysis not found"}
+
+    analysis["_id"] = str(analysis["_id"])
+    return {"status": "analyzed", "result": analysis}
 
 
 app.include_router(router)
