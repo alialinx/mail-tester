@@ -25,21 +25,13 @@ def imap_conn():
 def get_email_from_imap(to_address):
     imap = imap_conn()
 
-    # Önce X-Original-To ile ara (en sağlam)
-    status, data = imap.search(
-        None,
-        'HEADER', 'X-Original-To', to_address
-    )
+    status, data = imap.search(None,'HEADER', 'X-Original-To', to_address)
 
     if status == "OK" and data[0]:
         mail_id = data[0].split()[-1]
 
     else:
-        # Olmazsa To header'dan ara
-        status, data = imap.search(
-            None,
-            'HEADER', 'To', to_address
-        )
+        status, data = imap.search(None,'HEADER', 'To', to_address)
 
         if status != "OK" or not data[0]:
             imap.logout()
@@ -57,8 +49,5 @@ def get_email_from_imap(to_address):
 
     imap.logout()
     return msg
-
-
-# get_email_from_imap("test-f156eeec839694341414@ozenses.com")
 
 
