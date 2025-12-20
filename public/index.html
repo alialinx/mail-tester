@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mail Tester</title>
+  <style>
+    :root { --radius: 14px; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% 0%, rgba(99,102,241,0.18), transparent 60%),
+                  radial-gradient(1200px 600px at 80% 10%, rgba(16,185,129,0.14), transparent 55%),
+                  #0b1020;
+      color: #e5e7eb;
+      min-height: 100vh;
+    }
+    a { color: inherit; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 18px 64px; }
+    .top {
+      display:flex; gap:16px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;
+      margin-bottom: 18px;
+    }
+    .brand h1 { margin:0; font-size: 26px; letter-spacing: .2px; }
+    .brand p { margin: 8px 0 0; color:#9ca3af; max-width: 58ch; line-height: 1.4; }
+    .card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.32);
+      backdrop-filter: blur(10px);
+    }
+    .grid { display:grid; grid-template-columns: 1.1fr .9fr; gap: 16px; }
+    @media (max-width: 920px){ .grid { grid-template-columns: 1fr; } }
+
+    .panel { padding: 16px; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    label { font-size: 12px; color:#9ca3af; display:block; margin: 0 0 6px; }
+    input, button, textarea {
+      font: inherit;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.25);
+      color:#e5e7eb;
+      padding: 10px 12px;
+      outline: none;
+    }
+    input:focus, textarea:focus {
+      border-color: rgba(99,102,241,0.65);
+      box-shadow: 0 0 0 4px rgba(99,102,241,0.18);
+    }
+    input { width: min(520px, 100%); }
+    textarea { width:100%; min-height: 86px; resize: vertical; }
+    button {
+      cursor:pointer;
+      background: linear-gradient(135deg, rgba(99,102,241,0.95), rgba(16,185,129,0.95));
+      border: none;
+      padding: 10px 14px;
+      font-weight: 600;
+    }
+    button.secondary {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-weight: 600;
+    }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .pill {
+      display:inline-flex; gap:8px; align-items:center;
+      padding: 7px 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      color:#d1d5db; font-size: 12px;
+    }
+    .statusDot { width: 9px; height: 9px; border-radius: 999px; background:#9ca3af; display:inline-block; }
+    .statusDot.ok { background: #34d399; }
+    .statusDot.warn { background: #fbbf24; }
+    .statusDot.bad { background: #fb7185; }
+    .muted { color:#9ca3af; font-size: 13px; line-height: 1.45; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .divider { height: 1px; background: rgba(255,255,255,0.10); margin: 14px 0; }
+    .scoreBox {
+      display:flex; align-items:center; justify-content:space-between; gap: 12px;
+      padding: 14px; border-radius: 14px;
+      background: rgba(0,0,0,0.28);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+    .scoreNum { font-size: 34px; font-weight: 800; letter-spacing: .2px; }
+    .scoreMeta { color:#9ca3af; font-size: 13px; }
+    .items { margin-top: 12px; display:flex; flex-direction:column; gap: 10px; }
+    .item {
+      padding: 12px; border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      display:flex; justify-content:space-between; gap: 10px; align-items:flex-start;
+    }
+    .item .left { display:flex; flex-direction:column; gap: 6px; }
+    .tag {
+      display:inline-flex; align-items:center; gap: 6px;
+      padding: 4px 8px; border-radius: 999px;
+      font-size: 12px; color:#e5e7eb;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      width: fit-content;
+    }
+    .tag.neg { background: rgba(251,113,133,0.16); border-color: rgba(251,113,133,0.28); }
+    .tag.pos { background: rgba(52,211,153,0.14); border-color: rgba(52,211,153,0.25); }
+    .right { white-space:nowrap; color:#d1d5db; font-weight: 700; }
+    .footer { margin-top: 16px; color:#6b7280; font-size: 12px; }
+    .kbd { padding: 2px 6px; border: 1px solid rgba(255,255,255,0.16); border-bottom-width: 2px; border-radius: 7px; background: rgba(0,0,0,0.25); }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <h1>Mail Tester</h1>
+        <p>Generate a test email address, send an email to it, then poll for the analysis report. Simple UI for your FastAPI + Celery backend.</p>
+      </div>
+      <div class="pill">
+        <span class="statusDot" id="apiDot"></span>
+        <span>API:</span>
+        <span class="mono" id="apiBaseLabel">http://localhost:8000</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card panel">
+        <div class="row" style="justify-content: space-between;">
+          <div>
+            <label>API Base URL</label>
+            <input id="apiBase" value="http://localhost:8000" placeholder="http://localhost:8000" />
+          </div>
+          <div style="display:flex; gap:10px; align-items:flex-end;">
+            <button class="secondary" id="btnPing">Ping</button>
+            <button id="btnGenerate">Generate</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row" style="align-items:flex-start;">
+          <div style="flex: 1;">
+            <label>Generated Test Address</label>
+            <input id="toAddress" class="mono" placeholder="Click Generate" readonly />
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="secondary" id="btnCopy" disabled>Copy</button>
+            <button class="secondary" id="btnCheck" disabled>Check Result</button>
+            <button class="secondary" id="btnAuto" disabled>Auto Poll</button>
+          </div>
+        </div>
+
+        <p class="muted" style="margin: 10px 0 0;">
+          After you generate an address, send an email to it from any provider. Then click <span class="kbd">Check Result</span> or <span class="kbd">Auto Poll</span>.
+        </p>
+
+        <div class="divider"></div>
+
+        <label>Live Status</label>
+        <div class="scoreBox">
+          <div>
+            <div class="pill" style="margin-bottom: 8px;">
+              <span class="statusDot" id="statusDot"></span>
+              <span id="statusText">idle</span>
+            </div>
+            <div class="scoreMeta" id="statusHint">Generate a test address to begin.</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="scoreNum" id="scoreNum">—</div>
+            <div class="scoreMeta" id="scoreTitle">No score</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <label>Debug</label>
+        <textarea id="debug" class="mono" readonly placeholder="Requests and responses will appear here..."></textarea>
+
+        <div class="footer">
+          Tip: If you see CORS errors, ensure FastAPI has CORS enabled and you are using the correct API Base URL.
+        </div>
+      </div>
+
+      <div class="card panel">
+        <div class="row" style="justify-content: space-between;">
+          <div>
+            <h2 style="margin:0; font-size: 16px;">Analysis Report</h2>
+            <div class="muted" style="margin-top:6px;">Score, summary, and detailed deductions.</div>
+          </div>
+          <button class="secondary" id="btnClear">Clear</button>
+        </div>
+
+        <div id="report" style="margin-top: 12px;">
+          <div class="muted">No report yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    let pollTimer = null;
+    let lastToAddress = "";
+
+    function setApiStatus(ok) {
+      const dot = $("apiDot");
+      dot.className = "statusDot " + (ok ? "ok" : "bad");
+    }
+
+    function setStatus(status, hint) {
+      $("statusText").textContent = status;
+      $("statusHint").textContent = hint || "";
+
+      const dot = $("statusDot");
+      dot.className = "statusDot";
+
+      if (status === "analyzed") dot.classList.add("ok");
+      else if (status === "processing" || status === "pending") dot.classList.add("warn");
+      else if (status === "error" || status === "expired") dot.classList.add("bad");
+    }
+
+    function logDebug(obj) {
+      const text = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+      $("debug").value = text + "\n\n" + $("debug").value;
+    }
+
+    function renderReport(result) {
+      const host = $("report");
+      if (!result) {
+        host.innerHTML = `<div class="muted">No report yet.</div>`;
+        return;
+      }
+
+      const score = result.score ?? "—";
+      const title = result.title ?? "";
+      const desc = result.description ?? "";
+      const items = Array.isArray(result.items) ? result.items : [];
+
+      $("scoreNum").textContent = score;
+      $("scoreTitle").textContent = title || "Score";
+
+      const itemsHtml = items.length
+        ? `<div class="items">
+            ${items.map(it => {
+              const val = (it.value ?? it.points ?? 0);
+              const txt = (it.text ?? it.message ?? "Issue");
+              const isNeg = Number(val) > 0; // in your data, deductions are positive values
+              return `
+                <div class="item">
+                  <div class="left">
+                    <div class="tag ${isNeg ? "neg" : "pos"}">${isNeg ? "Deduction" : "Info"}</div>
+                    <div>${escapeHtml(txt)}</div>
+                  </div>
+                  <div class="right">${isNeg ? "-" : ""}${escapeHtml(String(val))}</div>
+                </div>
+              `;
+            }).join("")}
+           </div>`
+        : `<div class="muted">No issues found.</div>`;
+
+      host.innerHTML = `
+        <div class="scoreBox" style="margin-bottom: 12px;">
+          <div>
+            <div style="font-weight:800; font-size: 16px;">${escapeHtml(title || "Result")}</div>
+            <div class="muted" style="margin-top:6px;">${escapeHtml(desc)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="scoreNum">${escapeHtml(String(score))}</div>
+            <div class="scoreMeta">Score</div>
+          </div>
+        </div>
+        ${itemsHtml}
+      `;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+      }[m]));
+    }
+
+    async function apiFetch(path, options = {}) {
+      const base = $("apiBase").value.trim().replace(/\/+$/, "");
+      $("apiBaseLabel").textContent = base;
+
+      const url = base + path;
+      const resp = await fetch(url, {
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        ...options
+      });
+
+      const contentType = resp.headers.get("content-type") || "";
+      const body = contentType.includes("application/json")
+        ? await resp.json().catch(() => ({}))
+        : await resp.text().catch(() => "");
+
+      return { ok: resp.ok, status: resp.status, body, url };
+    }
+
+    async function ping() {
+      try {
+        const res = await apiFetch("/openapi.json", { method: "GET" });
+        setApiStatus(res.ok);
+        logDebug({ action: "ping", url: res.url, status: res.status, ok: res.ok });
+        return res.ok;
+      } catch (e) {
+        setApiStatus(false);
+        logDebug({ action: "ping_error", error: String(e) });
+        return false;
+      }
+    }
+
+    async function generate() {
+      $("btnGenerate").disabled = true;
+      try {
+        const res = await apiFetch("/generate", { method: "POST", body: JSON.stringify({}) });
+        logDebug({ action: "generate", url: res.url, status: res.status, body: res.body });
+
+        if (!res.ok) throw new Error("Generate failed");
+
+        const addr = res.body?.result;
+        if (!addr) throw new Error("No result address returned");
+
+        lastToAddress = addr;
+        $("toAddress").value = addr;
+
+        $("btnCopy").disabled = false;
+        $("btnCheck").disabled = false;
+        $("btnAuto").disabled = false;
+
+        setStatus("pending", "Address created. Send an email to this address, then check result.");
+        renderReport(null);
+        $("scoreNum").textContent = "—";
+        $("scoreTitle").textContent = "No score";
+      } catch (e) {
+        setStatus("error", "Failed to generate address. Check API Base URL and logs.");
+        logDebug({ action: "generate_error", error: String(e) });
+      } finally {
+        $("btnGenerate").disabled = false;
+      }
+    }
+
+    async function checkResult() {
+      if (!lastToAddress) return;
+
+      $("btnCheck").disabled = true;
+      try {
+        const enc = encodeURIComponent(lastToAddress);
+        const res = await apiFetch(`/result/${enc}`, { method: "GET" });
+        logDebug({ action: "result", url: res.url, status: res.status, body: res.body });
+
+        if (!res.ok) throw new Error("Result request failed");
+
+        const status = res.body?.status || "unknown";
+        const lastError = res.body?.last_error;
+
+        if (status === "analyzed") {
+          setStatus("analyzed", "Analysis completed.");
+          renderReport(res.body.result);
+          stopAutoPoll();
+        } else if (status === "processing" || status === "pending") {
+          setStatus(status, lastError ? `Worker status: ${lastError}` : "Waiting for email...");
+          renderReport(null);
+        } else if (status === "expired") {
+          setStatus("expired", "This test address has expired. Generate a new one.");
+          renderReport(null);
+          stopAutoPoll();
+        } else if (status === "error") {
+          setStatus("error", lastError ? `Error: ${lastError}` : "Unknown error.");
+          renderReport(null);
+          stopAutoPoll();
+        } else {
+          setStatus(status, "Unknown status from API.");
+          renderReport(null);
+        }
+
+      } catch (e) {
+        setStatus("error", "Failed to fetch result. Check API / network / CORS.");
+        logDebug({ action: "result_error", error: String(e) });
+      } finally {
+        $("btnCheck").disabled = false;
+      }
+    }
+
+    function startAutoPoll() {
+      if (!lastToAddress) return;
+      stopAutoPoll();
+      setStatus($("statusText").textContent || "processing", "Auto polling every 3 seconds...");
+      pollTimer = setInterval(checkResult, 3000);
+      $("btnAuto").textContent = "Stop Poll";
+    }
+
+    function stopAutoPoll() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = null;
+      $("btnAuto").textContent = "Auto Poll";
+    }
+
+    $("btnPing").addEventListener("click", ping);
+    $("btnGenerate").addEventListener("click", async () => {
+      const ok = await ping();
+      if (ok) await generate();
+    });
+
+    $("btnCopy").addEventListener("click", async () => {
+      const v = $("toAddress").value;
+      if (!v) return;
+      try {
+        await navigator.clipboard.writeText(v);
+        logDebug({ action: "copy", value: v });
+      } catch {
+        // fallback
+        $("toAddress").select();
+        document.execCommand("copy");
+      }
+    });
+
+    $("btnCheck").addEventListener("click", checkResult);
+
+    $("btnAuto").addEventListener("click", () => {
+      if (pollTimer) stopAutoPoll();
+      else startAutoPoll();
+    });
+
+    $("btnClear").addEventListener("click", () => {
+      $("debug").value = "";
+      renderReport(null);
+      $("scoreNum").textContent = "—";
+      $("scoreTitle").textContent = "No score";
+      setStatus("idle", "Generate a test address to begin.");
+      stopAutoPoll();
+    });
+
+    // initial
+    (async () => {
+      await ping();
+      setStatus("idle", "Set API Base URL, then Generate.");
+    })();
+  </script>
+</body>
+</html>
