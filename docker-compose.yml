@@ -1,0 +1,37 @@
+services:
+  redis:
+    image: redis:7
+
+  mongo:
+    image: mongo:7
+
+
+  api:
+    build: .
+    container_name: mailtester-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+      - redis
+    ports:
+      - "8000:8000"
+    command: >
+      uvicorn src.api.main:app
+      --host 0.0.0.0
+      --port 8000
+
+  worker:
+    build: .
+    container_name: mailtester-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+      - redis
+    command: celery -A src.worker.celery_app.celery_app worker -l INFO -P solo
+
+volumes:
+  mongo_data:

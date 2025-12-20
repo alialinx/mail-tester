@@ -5,3 +5,6 @@ dnspython
 imapclient
 python-dotenv
 email-validator
+cryptography
+celery[redis]
+redis
