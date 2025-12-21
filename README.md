@@ -49,10 +49,38 @@ Mail Tester uses Celery for asynchronous background processing.
 - Email retrieval and analysis run in background workers
 - The API remains fast and non-blocking
 - All state and results are stored in MongoDB
-- Redis is used as broker and result backend
+- Redis is used as the Celery broker (task queue)
+- All processing states and analysis results are stored in MongoDB
+
 
 ---
 
+
+## SpamAssassin (Spam Score)
+
+Mail Tester can optionally run a SpamAssassin scan and include the spam score and report in the final result.
+
+SpamAssassin runs as a separate `spamd` service and is accessed by the Celery worker over TCP.
+
+This keeps the API fast and allows SpamAssassin to be enabled or disabled independently.
+
+### Docker Compose service
+
+Add the following service to `docker-compose.yml`:
+
+```yml
+spamassassin:
+  image: axllent/spamassassin:latest
+  container_name: mailtester-spamassassin
+  restart: unless-stopped
+  ports:
+    - "783:783"
+  worker:
+  depends_on:
+    - mongo
+    - redis
+    - spamassassin
+  ```
 ## Result Statuses
 
 GET /result/{to_address} may return:
@@ -93,11 +121,7 @@ GET /result/{to_address} may return:
 
 ## Quickstart (Docker)
 
-### Requirements
 
-- Docker Desktop (Windows/macOS) or Docker Engine (Linux)
-- A working domain
-- IMAP mailbox credentials to receive test emails
 
 ---
 
@@ -105,24 +129,6 @@ GET /result/{to_address} may return:
 
 Create a `.env` file in the project root:
 
-MONGO_HOST=
-MONGO_PORT=
-MONGO_DB_NAME=
-MONGO_DB_USER=
-MONGO_DB_PASS=
-MONGO_AUTH_SOURCE=
-
-DOMAIN=
-IMAP_HOST=
-IMAP_PORT=
-IMAP_EMAIL=
-IMAP_PASSWORD=
-IMAP_FOLDER=
-
-CELERY_BROKER_URL=redis://redis:6379/0
-CELERY_RESULT_BACKEND=redis://redis:6379/1
-
----
 
 ### 2) Start the application
 
@@ -205,3 +211,5 @@ Mail Tester is built as an asynchronous system.
 
 This architecture is designed for safe, scalable, and non-blocking email analysis.
 
+A simple demo `index.html` may be included for testing purposes.
+The backend API works independently from any frontend.
