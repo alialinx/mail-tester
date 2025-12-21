@@ -148,12 +148,12 @@ class Analyzer:
 
         base = self.score.result()
 
-        # base: score/title/description/items(+issues)
-        # UI-ready ekler:
+
         base["meta"] = meta
         base["checks"] = checks
 
-        # (isteğe bağlı) kısa özet alanı
+
+
         base["summary"] = {
             "score": base["score"],
             "grade": base["title"],
