@@ -204,3 +204,4 @@ Mail Tester is built as an asynchronous system.
 - MongoDB stores results
 
 This architecture is designed for safe, scalable, and non-blocking email analysis.
+

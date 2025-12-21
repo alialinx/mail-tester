@@ -1,29 +1,38 @@
 class Score:
     def __init__(self):
-        self.score = 10.0
-        self.items = []
+        self.start = 10.0
+        self.items = []  # issues
+        self._score = self.start
 
-    def minus(self, value: float, text: str):
-        self.score -= value
-        self.items.append({"value": value,"text": text})
+    def minus(self, value: float, text: str, code: str = None, severity: str = "warning", details: str = "", how_to_fix: str = ""):
+        self._score -= float(value)
+        self.items.append({
+            "code": code or "GENERIC",
+            "severity": severity,
+            "points": -float(value),
+            "title": text,
+            "details": details,
+            "how_to_fix": how_to_fix
+        })
 
     def result(self):
-        if self.score < 0:
-            self.score = 0.0
+        score = max(0.0, round(self._score, 2))
 
-        final_score = round(self.score, 1)
-
-        if final_score >= 9:
-            title = "Excellent"
-            description = "Your email is perfect"
-        elif final_score >= 8:
-            title = "Good"
-            description = "Your email is almost perfect"
-        elif final_score >= 6:
-            title = "Average"
-            description = "Your email is okay but could be improved"
+        if score >= 9:
+            title, desc = "Excellent", "Your email is perfect"
+        elif score >= 7:
+            title, desc = "Good", "Your email is good"
+        elif score >= 5:
+            title, desc = "Average", "Your email has issues"
         else:
-            title = "Bad"
-            description = "Your email will likely go to spam"
+            title, desc = "Poor", "Your email is likely to fail deliverability checks"
 
-        return {"score": final_score,"title": title,"description": description,"items": self.items}
+        return {
+            "score": score,
+            "title": title,
+            "description": desc,
+            # eski formatla uyum için:
+            "items": [{"value": abs(i["points"]), "text": i["title"]} for i in self.items],
+            # yeni, UI için:
+            "issues": self.items,
+        }

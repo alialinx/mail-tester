@@ -1,10 +1,6 @@
 # app/main.py
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
 
-from starlette.staticfiles import StaticFiles
-
-from src.worker.tasks import pull_and_analyze
 from bson import ObjectId
 from fastapi import FastAPI, APIRouter, Depends
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -12,10 +8,8 @@ from fastapi.security import HTTPBasic
 from starlette.middleware.cors import CORSMiddleware
 
 from src.db.db import get_db
-from src.imap.imap import get_email_from_imap
-from src.processor.analyzer import Analyzer
 from src.processor.generator import generate_random_email
-from src.processor.service import get_mx_record, check_a_record, get_sender_ip
+from src.worker.tasks import pull_and_analyze
 
 app = FastAPI(
     title="Mail Tester",
@@ -29,6 +23,7 @@ app = FastAPI(
 
 security = HTTPBasic()
 
+
 # Swagger ana sayfa
 @app.get("/", include_in_schema=False)
 async def homepage():
@@ -36,6 +31,7 @@ async def homepage():
         openapi_url=app.openapi_url,
         title="Mail Tester",
     )
+
 
 # CORS
 app.add_middleware(
@@ -49,9 +45,9 @@ app.add_middleware(
 # Router
 router = APIRouter()
 
+
 @router.post("/generate", tags=["Generate"])
 def generate_random(db=Depends(get_db)):
-
     to_address = generate_random_email()
 
     now = datetime.now(timezone.utc)
@@ -61,9 +57,9 @@ def generate_random(db=Depends(get_db)):
         "status": "pending",
         "created_at": now,
         "expires_at": now + timedelta(hours=24),
-        "receiver_at":None,
-        "analysis_id":None,
-        "last_error":None
+        "receiver_at": None,
+        "analysis_id": None,
+        "last_error": None
 
     }
     db.test_emails.insert_one(doc)
@@ -71,13 +67,13 @@ def generate_random(db=Depends(get_db)):
 
     return {"result": to_address}
 
-@router.get("/result/{to_address}", tags=["result"])
-def get_result(to_address:str,db=Depends(get_db)):
 
+@router.get("/result/{to_address}", tags=["result"])
+def get_result(to_address: str, db=Depends(get_db)):
     email = db.test_emails.find_one({"to_address": to_address})
 
     if not email:
-        return {"status":"not found"}
+        return {"status": "not found"}
 
     expires_at = email.get("expires_at")
     if expires_at:
@@ -89,21 +85,12 @@ def get_result(to_address:str,db=Depends(get_db)):
 
     status = email["status"]
     if status != "analyzed":
-        if status != "analyzed":
-            return {
-                "status": status,
-                "to_address": email.get("to_address"),
-                "created_at": email.get("created_at"),
-                "expires_at": email.get("expires_at"),
-                "receiver_at": email.get("receiver_at"),
-                "last_error": email.get("last_error"),
-                "analysis_id": email.get("analysis_id"),
-            }
+        return {"status": status, }
 
     analysis = db.analyses.find_one({"_id": ObjectId(email["analysis_id"])})
 
     if not analysis:
-        return {"status":"analysis not found"}
+        return {"status": "analysis not found"}
 
     analysis["_id"] = str(analysis["_id"])
     return {"status": "analyzed", "result": analysis}

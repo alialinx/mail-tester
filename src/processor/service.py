@@ -1,8 +1,10 @@
 import ipaddress
 import re
-
+from concurrent.futures import ThreadPoolExecutor
 import dns.resolver
 import smtplib
+from src.config import DNSBL_TIMEOUT, DNSBL_LIFETIME, DNSBL_MAX_LISTS, DNSBL_CONCURRENCY
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def check_spf_record(domain: str) -> bool:
     try:
@@ -75,22 +77,41 @@ DNSBL_LISTS = [
 ]
 
 def check_blacklists(ip: str) -> dict:
-    reversed_ip = ".".join(ip.split('.')[::-1])
+    if not ip:
+        return {"checked": 0, "results": {}, "summary": {"listed": 0, "not_listed": 0, "timeout": 0, "error": 0}}
+
+    reversed_ip = ".".join(ip.split(".")[::-1])
+
+    resolver = dns.resolver.Resolver(configure=True)
+    resolver.timeout = DNSBL_TIMEOUT
+    resolver.lifetime = DNSBL_LIFETIME
+
+    dnsbls = DNSBL_LISTS[:DNSBL_MAX_LISTS]
     results = {}
 
-    for dnsbl in DNSBL_LISTS:
-        query = f"{reversed_ip}.{dnsbl}"
+    def query_one(dnsbl: str):
+        q = f"{reversed_ip}.{dnsbl}"
         try:
-            dns.resolver.resolve(query, "A")
-            results[dnsbl] = "listed"
+            resolver.resolve(q, "A")
+            return dnsbl, "listed"
         except dns.resolver.NXDOMAIN:
-            results[dnsbl] = "not_listed"
+            return dnsbl, "not_listed"
+        except (dns.resolver.Timeout, dns.exception.Timeout):
+            return dnsbl, "timeout"
         except Exception:
-            results[dnsbl] = "error"
+            return dnsbl, "error"
 
-    return results
+    with ThreadPoolExecutor(max_workers=max(1, DNSBL_CONCURRENCY)) as ex:
+        futures = [ex.submit(query_one, dnsbl) for dnsbl in dnsbls]
+        for fut in as_completed(futures):
+            dnsbl, status = fut.result()
+            results[dnsbl] = status
 
+    summary = {"listed": 0, "not_listed": 0, "timeout": 0, "error": 0}
+    for st in results.values():
+        summary[st] += 1
 
+    return {"checked": len(results), "results": results, "summary": summary}
 
 def get_mx_record(domain: str):
     try:

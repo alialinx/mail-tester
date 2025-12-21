@@ -1,9 +1,22 @@
 services:
   redis:
     image: redis:7
+    container_name: mailtester-redis
+    restart: unless-stopped
 
   mongo:
     image: mongo:7
+    container_name: mailtester-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  spamassassin:
+    image: axllent/spamassassin:latest
+    container_name: mailtester-spamassassin
+    restart: unless-stopped
 
 
   api:
@@ -31,6 +44,7 @@ services:
     depends_on:
       - mongo
       - redis
+      - spamassassin
     command: celery -A src.worker.celery_app.celery_app worker -l INFO -P solo
 
 volumes:
