@@ -8,7 +8,7 @@ load_dotenv()
 
 
 MONGO_HOST = os.getenv("MONGO_HOST", "mongo")
-MONGO_PORT = int(os.getenv("MONGO_PORT", "27017"))
+MONGO_PORT = int(os.getenv("MONGO_PORT"))
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "mail_tester")
 
 MONGO_DB_USER = (os.getenv("MONGO_DB_USER") or "").strip()
