@@ -32,27 +32,11 @@ def spamd_check(raw_email: bytes, host: str = None, port: int = None, timeout: f
         report = data.decode(errors="ignore")
         parsed = _parse_report(report)
 
-        return {
-            "status": "ok",
-            "is_spam": parsed.get("is_spam"),
-            "score": parsed.get("score"),
-            "threshold": parsed.get("threshold"),
-            "rules": parsed.get("rules", []),
-            "report": report,
-            "error": None,
-        }
+        return {"status": "ok","is_spam": parsed.get("is_spam"),"score": parsed.get("score"),"threshold": parsed.get("threshold"),"rules": parsed.get("rules", []),"report": report,"error": None,}
 
 
     except Exception as e:
-        return {
-            "status": "error",
-            "is_spam": None,
-            "score": None,
-            "threshold": None,
-            "rules": [],
-            "report": "",
-            "error": repr(e),
-        }
+        return {"status": "error","is_spam": None,"score": None,"threshold": None,"rules": [],"report": "","error": repr(e),}
 
 def _parse_report(report: str) -> dict:
     out = {"is_spam": None, "score": None, "threshold": None, "rules": []}

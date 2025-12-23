@@ -36,33 +36,20 @@ class Analyzer:
         dkim_ok = check_dkim_record(self.domain)
         checks["dkim"] = {"status": "pass" if dkim_ok else "missing", "domain": self.domain, "selector": "default"}
         if not dkim_ok:
-            self.score.minus(
-                1.5,
-                "DKIM record not found",
-                code="DKIM_MISSING",
-                severity="high",
-                how_to_fix=f"Configure DKIM signing for {self.domain} and publish the selector TXT record (e.g., default._domainkey.{self.domain}).",
-            )
+            self.score.minus(1.5,"DKIM record not found",code="DKIM_MISSING",severity="high",
+                how_to_fix=f"Configure DKIM signing for {self.domain} and publish the selector TXT record (e.g., default._domainkey.{self.domain}).",            )
 
         dmarc_ok = check_dmarc_record(self.domain)
         checks["dmarc"] = {"status": "pass" if dmarc_ok else "missing", "domain": self.domain}
         if not dmarc_ok:
-            self.score.minus(
-                1.5,
-                "DMARC record not found",
-                code="DMARC_MISSING",
-                severity="medium",
-                how_to_fix=f"Add a DMARC TXT record at _dmarc.{self.domain}. Start with p=none to monitor, then enforce.",
-            )
+            self.score.minus(1.5,"DMARC record not found",code="DMARC_MISSING",severity="medium",
+                how_to_fix=f"Add a DMARC TXT record at _dmarc.{self.domain}. Start with p=none to monitor, then enforce.",)
 
         # ---------------------------
         # HEADERS
         # ---------------------------
         headers = dict(self.msg.items())
-        header_check = {
-            "status": "ok",
-            "missing_required": [],
-            "missing_recommended": [],
+        header_check = {"status": "ok","missing_required": [],"missing_recommended": [],
             "raw": {
                 "from": headers.get("From"),
                 "to": headers.get("To"),
@@ -111,14 +98,7 @@ class Analyzer:
 
             listed_on = [k for k, v in bl.get("results", {}).items() if v == "listed"]
             if listed_on:
-                self.score.minus(
-                    2.0,
-                    "IP is listed in blacklists: " + ", ".join(listed_on),
-                    code="DNSBL_LISTED",
-                    severity="high",
-                    details=f"Listed on: {', '.join(listed_on)}",
-                    how_to_fix="Request delisting from the DNSBL provider(s) or change sending IP.",
-                )
+                self.score.minus(2.0,"IP is listed in blacklists: " + ", ".join(listed_on),code="DNSBL_LISTED",severity="high",details=f"Listed on: {', '.join(listed_on)}",how_to_fix="Request delisting from the DNSBL provider(s) or change sending IP.",)
         else:
             checks["rdns"] = {"success": False, "hostname": None, "skipped": True}
             checks["blacklists"] = {"checked": 0, "results": {}, "summary": {}, "skipped": True}
@@ -134,9 +114,7 @@ class Analyzer:
         sa = spamd_check(raw_email)
         checks["spamassassin"] = sa
 
-        # ---------------------------
-        # META (UI için)
-        # ---------------------------
+
         meta = {
             "sender_domain": self.domain,
             "sender_ip": self.sender_ip,
@@ -154,11 +132,6 @@ class Analyzer:
 
 
 
-        base["summary"] = {
-            "score": base["score"],
-            "grade": base["title"],
-            "headline": base["description"],
-            "top_issues": base.get("issues", [])[:3],
-        }
+        base["summary"] = {"score": base["score"],"grade": base["title"],"headline": base["description"],"top_issues": base.get("issues", [])[:3],}
 
         return base
