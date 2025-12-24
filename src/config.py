@@ -16,7 +16,7 @@ MONGO_DB_PASS = (os.getenv("MONGO_DB_PASS") or "").strip()
 MONGO_AUTH_SOURCE = (os.getenv("MONGO_AUTH_SOURCE") or "").strip()
 
 
-MONGO_URI = os.getenv("MONGO_URI")
+MONGODB_URI = os.getenv("MONGODB_URI")
 DOMAIN = os.getenv("DOMAIN")
 IMAP_HOST = os.getenv("IMAP_HOST")
 IMAP_PORT = os.getenv("IMAP_PORT")
