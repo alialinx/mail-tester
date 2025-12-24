@@ -189,6 +189,32 @@ Swagger UI will be available on the root page.
 
 ---
 
+## Postfix Virtual Alias Setup
+
+Mail Tester creates temporary email addresses like:
+
+test-1234@example.com
+
+These addresses do not exist as real mailboxes.  
+Postfix must forward all incoming test emails to one real mailbox.
+
+---
+
+### Configuration
+
+Edit the Postfix virtual alias file:
+
+```bash
+/etc/postfix/virtual_alias
+
+@example.com    mail-tester@example.com
+
+postmap /etc/postfix/virtual_alias
+systemctl reload postfix
+```
+
+
+
 ## Usage Flow
 
 1. Call POST /generate
