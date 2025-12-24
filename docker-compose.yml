@@ -8,10 +8,15 @@ services:
     image: mongo:7
     container_name: mailtester-mongo
     restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - mongo_data:/data/db
     ports:
-      - "127.0.0.1:27018:27017"
+      - "27018:27017"
 
   spamassassin:
     image: axllent/spamassassin:latest

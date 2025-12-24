@@ -15,23 +15,8 @@ MONGO_DB_USER = (os.getenv("MONGO_DB_USER") or "").strip()
 MONGO_DB_PASS = (os.getenv("MONGO_DB_PASS") or "").strip()
 MONGO_AUTH_SOURCE = (os.getenv("MONGO_AUTH_SOURCE") or "").strip()
 
-def build_mongo_uri() -> str:
 
-    if not MONGO_DB_USER or not MONGO_DB_PASS:
-        return f"mongodb://{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB_NAME}"
-
-    auth_source = MONGO_AUTH_SOURCE or MONGO_DB_NAME
-
-    user = quote_plus(MONGO_DB_USER)
-    pwd = quote_plus(MONGO_DB_PASS)
-
-    return (
-        f"mongodb://{user}:{pwd}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB_NAME}"
-        f"?authSource={auth_source}"
-    )
-
-MONGO_URI = build_mongo_uri()
-
+MONGO_URI = os.getenv("MONGO_URI")
 DOMAIN = os.getenv("DOMAIN")
 IMAP_HOST = os.getenv("IMAP_HOST")
 IMAP_PORT = os.getenv("IMAP_PORT")
