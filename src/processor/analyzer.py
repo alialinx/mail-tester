@@ -19,9 +19,6 @@ class Analyzer:
     def analyze(self):
         checks = {}
 
-        # ---------------------------
-        # AUTH: SPF / DKIM / DMARC
-        # ---------------------------
         spf_ok = check_spf_record(self.domain)
         checks["spf"] = {"status": "pass" if spf_ok else "missing", "domain": self.domain}
         if not spf_ok:
@@ -45,9 +42,7 @@ class Analyzer:
             self.score.minus(1.5,"DMARC record not found",code="DMARC_MISSING",severity="medium",
                 how_to_fix=f"Add a DMARC TXT record at _dmarc.{self.domain}. Start with p=none to monitor, then enforce.",)
 
-        # ---------------------------
-        # HEADERS
-        # ---------------------------
+
         headers = dict(self.msg.items())
         header_check = {"status": "ok","missing_required": [],"missing_recommended": [],
             "raw": {
@@ -82,9 +77,7 @@ class Analyzer:
 
         checks["headers"] = header_check
 
-        # ---------------------------
-        # SENDER IP / RDNS / BLACKLISTS
-        # ---------------------------
+
         checks["sender_ip"] = {"status": "ok" if self.sender_ip else "missing", "value": self.sender_ip}
 
         if self.sender_ip:
@@ -93,7 +86,7 @@ class Analyzer:
             if not rdns.get("success"):
                 self.score.minus(0.4, "Reverse DNS not matching", code="RDNS_FAIL", severity="low")
 
-            bl = check_blacklists(self.sender_ip)  # senin fonksiyon summary/results döndürüyor
+            bl = check_blacklists(self.sender_ip)
             checks["blacklists"] = bl
 
             listed_on = [k for k, v in bl.get("results", {}).items() if v == "listed"]
@@ -103,9 +96,7 @@ class Analyzer:
             checks["rdns"] = {"success": False, "hostname": None, "skipped": True}
             checks["blacklists"] = {"checked": 0, "results": {}, "summary": {}, "skipped": True}
 
-        # ---------------------------
-        # SPAMASSASSIN
-        # ---------------------------
+
         try:
             raw_email = self.msg.as_bytes()
         except Exception:

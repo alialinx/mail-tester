@@ -1,7 +1,7 @@
 class Score:
     def __init__(self):
         self.start = 10.0
-        self.items = []  # issues
+        self.items = []
         self._score = self.start
 
     def minus(self, value: float, text: str, code: str = None, severity: str = "warning", details: str = "", how_to_fix: str = ""):
@@ -27,12 +27,4 @@ class Score:
         else:
             title, desc = "Poor", "Your email is likely to fail deliverability checks"
 
-        return {
-            "score": score,
-            "title": title,
-            "description": desc,
-            # eski formatla uyum için:
-            "items": [{"value": abs(i["points"]), "text": i["title"]} for i in self.items],
-            # yeni, UI için:
-            "issues": self.items,
-        }
+        return {"score": score,"title": title,"description": desc,"items": [{"value": abs(i["points"]), "text": i["title"]} for i in self.items],"issues": self.items,}
