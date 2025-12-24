@@ -1,593 +1,986 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Mail Tester</title>
-  <style>
-    :root{
-      --bg:#f7f9fe;
-      --card:#ffffff;
-      --text:#0b1220;
-      --muted:#5b6b84;
-      --border:#e6ebf4;
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Mail Tester</title>
+    <style>
+        :root {
+            --bg: #f7f9fe;
+            --card: #ffffff;
+            --text: #0b1220;
+            --muted: #5b6b84;
+            --border: #e6ebf4;
 
-      --p:#2b59ff;
-      --p2:#2347cc;
+            --p: #2b59ff;
+            --p2: #2347cc;
 
-      --good:#16a34a;
-      --warn:#d97706;
-      --bad:#dc2626;
-      --neutral:#94a3b8;
+            --good: #16a34a;
+            --warn: #d97706;
+            --bad: #dc2626;
+            --neutral: #94a3b8;
 
-      --shadow: 0 18px 46px rgba(11,18,32,.10);
-      --shadow2: 0 10px 26px rgba(11,18,32,.07);
+            --shadow: 0 18px 46px rgba(11, 18, 32, .10);
+            --shadow2: 0 10px 26px rgba(11, 18, 32, .07);
 
-      --r: 18px;
-      --r2: 26px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:var(--sans);
-      color:var(--text);
-      background:
-        radial-gradient(1200px 700px at 50% -15%, rgba(43,89,255,.16), transparent 58%),
-        radial-gradient(900px 560px at 12% 12%, rgba(22,163,74,.08), transparent 58%),
-        radial-gradient(900px 560px at 92% 10%, rgba(217,119,6,.06), transparent 58%),
-        var(--bg);
-      min-height:100vh;
-    }
-    .wrap{max-width:1160px;margin:0 auto;padding:26px 16px 70px}
+            --r: 18px;
+            --r2: 26px;
+            --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+        }
 
-    /* top */
-    .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
-    .brand h1{margin:0;font-size:22px;font-weight:950;letter-spacing:.2px}
-    .brand p{margin:8px 0 0;color:var(--muted);font-size:13.5px;line-height:1.6;max-width:860px}
-    .apiPill{
-      display:inline-flex;gap:8px;align-items:center;
-      padding:10px 12px;border-radius:999px;
-      background:rgba(255,255,255,.92);
-      border:1px solid var(--border);
-      box-shadow:var(--shadow2);
-      font-size:12px;color:var(--muted);white-space:nowrap
-    }
-    .apiPill b{color:var(--text)}
+        * {
+            box-sizing: border-box
+        }
 
-    /* hero */
-    .hero{
-      background:rgba(255,255,255,.86);
-      border:1px solid rgba(230,235,244,.95);
-      border-radius:var(--r2);
-      box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-    .heroHd{
-      padding:18px 18px 14px;
-      border-bottom:1px solid rgba(230,235,244,.95);
-      display:flex;justify-content:space-between;gap:12px;align-items:flex-start
-    }
-    .heroHd .t{font-weight:950}
-    .heroHd .s{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.5}
-    .heroBd{padding:18px}
+        body {
+            margin: 0;
+            font-family: var(--sans);
+            color: var(--text);
+            background: radial-gradient(1200px 700px at 50% -15%, rgba(43, 89, 255, .16), transparent 58%),
+            radial-gradient(900px 560px at 12% 12%, rgba(22, 163, 74, .08), transparent 58%),
+            radial-gradient(900px 560px at 92% 10%, rgba(217, 119, 6, .06), transparent 58%),
+            var(--bg);
+            min-height: 100vh;
+        }
 
-    .addrRow{
-      display:grid;
-      grid-template-columns: 1fr auto;
-      gap:12px;
-      align-items:center;
-    }
-    @media(max-width:840px){ .addrRow{grid-template-columns:1fr} }
+        .wrap {
+            max-width: 1160px;
+            margin: 0 auto;
+            padding: 26px 16px 70px
+        }
 
-    .addrInput{
-      width:100%;
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:18px;
-      padding:14px 14px;
-      font-size:14px;
-      font-family:var(--mono);
-      box-shadow:0 12px 26px rgba(11,18,32,.06);
-      outline:none;
-    }
-    .btnRow{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-    .btn{
-      border:1px solid var(--border);
-      background:#fff;
-      color:var(--text);
-      border-radius:18px;
-      padding:12px 14px;
-      font-weight:950;
-      cursor:pointer;
-      transition: transform .06s ease, box-shadow .15s ease, border-color .15s ease;
-    }
-    .btn:hover{box-shadow:0 14px 30px rgba(11,18,32,.10);border-color:#d7dfef}
-    .btn:active{transform:translateY(1px)}
-    .btn.primary{
-      background:linear-gradient(180deg, var(--p), var(--p2));
-      border-color:transparent;
-      color:#fff;
-    }
-    .btn.primary:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
-    .btn.ghost{background:transparent}
+        /* top */
+        .top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px
+        }
 
-    .subRow{
-      margin-top:12px;
-      display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap
-    }
-    .status{
-      display:flex;align-items:center;gap:10px;
-      color:var(--muted);font-size:13px
-    }
-    .dot{width:10px;height:10px;border-radius:999px;background:#cbd5e1}
-    .dot.good{background:var(--good)}
-    .dot.warn{background:var(--warn)}
-    .dot.bad{background:var(--bad)}
-    .hint{
-      margin-top:12px;
-      border-radius:18px;
-      border:1px solid var(--border);
-      background:#fff;
-      padding:12px 14px;
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.55;
-    }
-    .hint.good{border-color:#bbf7d0;background:#f0fdf4;color:#14532d}
-    .hint.bad{border-color:#fecaca;background:#fef2f2;color:#7f1d1d}
+        .brand h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 950;
+            letter-spacing: .2px
+        }
 
-    .apiBox{
-      margin-top:12px;
-      border-radius:18px;border:1px solid var(--border);
-      background:#fff;padding:12px 14px;display:none
-    }
-    .label{font-size:12px;color:var(--muted);margin-bottom:8px}
-    .small{font-size:12px;color:var(--muted);line-height:1.55}
+        .brand p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 13.5px;
+            line-height: 1.6;
+            max-width: 860px
+        }
 
-    /* results layout */
-    .hidden{display:none !important}
-    .results{margin-top:16px}
-    .grid{display:grid;grid-template-columns: 1.35fr .65fr;gap:14px}
-    @media(max-width:980px){ .grid{grid-template-columns:1fr} }
+        .apiPill {
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .92);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow2);
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap
+        }
 
-    .card{
-      background:rgba(255,255,255,.92);
-      border:1px solid var(--border);
-      border-radius:var(--r2);
-      box-shadow:var(--shadow2);
-      overflow:hidden;
-    }
-    .cardHd{
-      padding:14px 16px;
-      border-bottom:1px solid var(--border);
-      display:flex;justify-content:space-between;align-items:center;gap:10px
-    }
-    .cardHd .t{font-weight:950}
-    .cardHd .s{font-size:12px;color:var(--muted)}
-    .cardBd{padding:16px}
+        .apiPill b {
+            color: var(--text)
+        }
 
-    /* score header */
-    .scoreHero{
-      display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:22px;
-      padding:14px;
-    }
-    .scoreLeft{display:flex;gap:14px;align-items:center;min-width:0}
-    .gauge{
-      width:78px;height:78px;border-radius:22px;
-      border:1px solid var(--border);
-      background:linear-gradient(180deg, #fff, #f4f7ff);
-      display:grid;place-items:center;
-      position:relative;
-      overflow:hidden;
-    }
-    .gauge .n{font-weight:950;font-size:22px}
-    .gauge .sub{font-size:11px;color:var(--muted);margin-top:2px}
-    .scoreTxt .title{font-weight:950;font-size:16px;margin:0}
-    .scoreTxt .desc{color:var(--muted);font-size:13px;margin-top:4px;line-height:1.45}
-    .badgeRow{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .badge{
-      display:inline-flex;align-items:center;gap:8px;
-      padding:7px 10px;border-radius:999px;
-      border:1px solid var(--border);
-      background:#f8fafc;
-      font-size:12px;font-weight:950;color:var(--muted);
-      white-space:nowrap;
-    }
-    .badge.good{color:#166534;border-color:#bbf7d0;background:#f0fdf4}
-    .badge.warn{color:#92400e;border-color:#fde68a;background:#fffbeb}
-    .badge.bad{color:#991b1b;border-color:#fecaca;background:#fef2f2}
+        /* hero */
+        .hero {
+            background: rgba(255, 255, 255, .86);
+            border: 1px solid rgba(230, 235, 244, .95);
+            border-radius: var(--r2);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
 
-    /* actionable issues */
-    .sectionTitle{
-      margin:16px 0 10px;
-      display:flex;justify-content:space-between;align-items:center;gap:10px
-    }
-    .sectionTitle h3{margin:0;font-size:14px}
-    .sectionTitle .meta{font-size:12px;color:var(--muted)}
-    .issues{display:flex;flex-direction:column;gap:10px}
-    .issue{
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:18px;
-      padding:12px;
-      display:grid;
-      grid-template-columns: 1fr auto;
-      gap:12px;
-      align-items:start;
-    }
-    .issue .what{font-weight:950}
-    .issue .impact{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.5}
-    .issue .fix{margin-top:8px;font-size:13px;line-height:1.5}
-    .pill{
-      border:1px solid var(--border);
-      background:#f8fafc;
-      color:var(--muted);
-      border-radius:999px;
-      padding:6px 10px;
-      height:fit-content;
-      font-family:var(--mono);
-      font-size:12px;
-      font-weight:950;
-      min-width:70px;text-align:center;
-      white-space:nowrap;
-    }
+        .heroHd {
+            padding: 18px 18px 14px;
+            border-bottom: 1px solid rgba(230, 235, 244, .95);
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start
+        }
 
-    .divider{height:1px;background:var(--border);margin:14px 0}
+        .heroHd .t {
+            font-weight: 950
+        }
 
-    /* quick facts */
-    .kv{display:grid;grid-template-columns: 130px 1fr;gap:10px 12px;align-items:start}
-    .k{color:var(--muted);font-size:12px;padding-top:2px}
-    .v{font-size:13px;line-height:1.5;word-break:break-word}
-    .mono{font-family:var(--mono)}
+        .heroHd .s {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5
+        }
 
-    /* checks - simple tiles */
-    .tiles{display:grid;grid-template-columns: 1fr 1fr;gap:10px}
-    @media(max-width:520px){ .tiles{grid-template-columns:1fr} }
-    .tile{
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:18px;
-      padding:12px;
-      display:flex;justify-content:space-between;gap:10px;align-items:flex-start
-    }
-    .tile .name{font-weight:950;font-size:13px}
-    .tile .hint{margin:6px 0 0; padding:0; border:none; background:transparent; color:var(--muted); font-size:12px; line-height:1.45}
-    .tag{
-      display:inline-flex;align-items:center;
-      border-radius:999px;padding:6px 10px;
-      font-size:12px;font-weight:950;
-      border:1px solid var(--border);
-      background:#f8fafc;color:var(--muted);
-      white-space:nowrap
-    }
-    .tag.good{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
-    .tag.warn{border-color:#fde68a;background:#fffbeb;color:#92400e}
-    .tag.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
-    .tag.neutral{border-color:#e2e8f0;background:#f8fafc;color:#475569}
+        .heroBd {
+            padding: 18px
+        }
 
-    /* details blocks */
-    details{border:1px solid var(--border);background:#fff;border-radius:18px;padding:12px}
-    summary{cursor:pointer;font-weight:950}
-    summary::-webkit-details-marker{display:none}
-    summary:before{
-      content:"▸";
-      display:inline-block;
-      margin-right:10px;
-      transform:translateY(-1px);
-      color:var(--muted);
-    }
-    details[open] summary:before{content:"▾"}
+        .addrRow {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+        }
 
-    .code{
-      margin-top:10px;
-      white-space:pre-wrap;
-      font-family:var(--mono);
-      background:#0b1220;
-      color:#e5e7eb;
-      border:1px solid #111827;
-      border-radius:16px;
-      padding:12px;
-      overflow:auto;
-      max-height:380px;
-    }
+        @media (max-width: 840px) {
+            .addrRow {
+                grid-template-columns:1fr
+            }
+        }
 
-    /* dnsbl */
-    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-    .listBox{
-      margin-top:10px;
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:16px;
-      padding:12px;
-    }
-    .listBox h4{margin:0 0 8px;font-size:13px}
-    .listBox ul{margin:0;padding-left:18px}
-    .listBox li{margin:4px 0;font-family:var(--mono);font-size:12px;color:var(--muted)}
-    .empty{color:var(--muted);font-size:12px}
+        .addrInput {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 18px;
+            padding: 14px 14px;
+            font-size: 14px;
+            font-family: var(--mono);
+            box-shadow: 0 12px 26px rgba(11, 18, 32, .06);
+            outline: none;
+        }
 
-    .fade{animation: fade .18s ease-out}
-    @keyframes fade{from{opacity:.3;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-  </style>
+        .btnRow {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end
+        }
+
+        .btn {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            border-radius: 18px;
+            padding: 12px 14px;
+            font-weight: 950;
+            cursor: pointer;
+            transition: transform .06s ease, box-shadow .15s ease, border-color .15s ease;
+        }
+
+        .btn:hover {
+            box-shadow: 0 14px 30px rgba(11, 18, 32, .10);
+            border-color: #d7dfef
+        }
+
+        .btn:active {
+            transform: translateY(1px)
+        }
+
+        .btn.primary {
+            background: linear-gradient(180deg, var(--p), var(--p2));
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .btn.primary:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            box-shadow: none
+        }
+
+        .btn.ghost {
+            background: transparent
+        }
+
+        .subRow {
+            margin-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 13px
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: #cbd5e1
+        }
+
+        .dot.good {
+            background: var(--good)
+        }
+
+        .dot.warn {
+            background: var(--warn)
+        }
+
+        .dot.bad {
+            background: var(--bad)
+        }
+
+        .hint {
+            margin-top: 12px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: #fff;
+            padding: 12px 14px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .hint.good {
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+            color: #14532d
+        }
+
+        .hint.bad {
+            border-color: #fecaca;
+            background: #fef2f2;
+            color: #7f1d1d
+        }
+
+        .apiBox {
+            margin-top: 12px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: #fff;
+            padding: 12px 14px;
+            display: none
+        }
+
+        .label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 8px
+        }
+
+        .small {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.55
+        }
+
+        /* results layout */
+        .hidden {
+            display: none !important
+        }
+
+        .results {
+            margin-top: 16px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.35fr .65fr;
+            gap: 14px
+        }
+
+        @media (max-width: 980px) {
+            .grid {
+                grid-template-columns:1fr
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, .92);
+            border: 1px solid var(--border);
+            border-radius: var(--r2);
+            box-shadow: var(--shadow2);
+            overflow: hidden;
+        }
+
+        .cardHd {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px
+        }
+
+        .cardHd .t {
+            font-weight: 950
+        }
+
+        .cardHd .s {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .cardBd {
+            padding: 16px
+        }
+
+        /* score header */
+        .scoreHero {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 22px;
+            padding: 14px;
+        }
+
+        .scoreLeft {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            min-width: 0
+        }
+
+        .gauge {
+            width: 78px;
+            height: 78px;
+            border-radius: 22px;
+            border: 1px solid var(--border);
+            background: linear-gradient(180deg, #fff, #f4f7ff);
+            display: grid;
+            place-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gauge .n {
+            font-weight: 950;
+            font-size: 22px
+        }
+
+        .gauge .sub {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px
+        }
+
+        .scoreTxt .title {
+            font-weight: 950;
+            font-size: 16px;
+            margin: 0
+        }
+
+        .scoreTxt .desc {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 4px;
+            line-height: 1.45
+        }
+
+        .badgeRow {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            font-size: 12px;
+            font-weight: 950;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .badge.good {
+            color: #166534;
+            border-color: #bbf7d0;
+            background: #f0fdf4
+        }
+
+        .badge.warn {
+            color: #92400e;
+            border-color: #fde68a;
+            background: #fffbeb
+        }
+
+        .badge.bad {
+            color: #991b1b;
+            border-color: #fecaca;
+            background: #fef2f2
+        }
+
+        /* actionable issues */
+        .sectionTitle {
+            margin: 16px 0 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px
+        }
+
+        .sectionTitle h3 {
+            margin: 0;
+            font-size: 14px
+        }
+
+        .sectionTitle .meta {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .issues {
+            display: flex;
+            flex-direction: column;
+            gap: 10px
+        }
+
+        .issue {
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 18px;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .issue .what {
+            font-weight: 950
+        }
+
+        .issue .impact {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5
+        }
+
+        .issue .fix {
+            margin-top: 8px;
+            font-size: 13px;
+            line-height: 1.5
+        }
+
+        .pill {
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            color: var(--muted);
+            border-radius: 999px;
+            padding: 6px 10px;
+            height: fit-content;
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 950;
+            min-width: 70px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 14px 0
+        }
+
+        /* quick facts */
+        .kv {
+            display: grid;
+            grid-template-columns: 130px 1fr;
+            gap: 10px 12px;
+            align-items: start
+        }
+
+        .k {
+            color: var(--muted);
+            font-size: 12px;
+            padding-top: 2px
+        }
+
+        .v {
+            font-size: 13px;
+            line-height: 1.5;
+            word-break: break-word
+        }
+
+        .mono {
+            font-family: var(--mono)
+        }
+
+        /* checks - simple tiles */
+        .tiles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px
+        }
+
+        @media (max-width: 520px) {
+            .tiles {
+                grid-template-columns:1fr
+            }
+        }
+
+        .tile {
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 18px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start
+        }
+
+        .tile .name {
+            font-weight: 950;
+            font-size: 13px
+        }
+
+        .tile .hint {
+            margin: 6px 0 0;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.45
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 950;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            color: var(--muted);
+            white-space: nowrap
+        }
+
+        .tag.good {
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+            color: #166534
+        }
+
+        .tag.warn {
+            border-color: #fde68a;
+            background: #fffbeb;
+            color: #92400e
+        }
+
+        .tag.bad {
+            border-color: #fecaca;
+            background: #fef2f2;
+            color: #991b1b
+        }
+
+        .tag.neutral {
+            border-color: #e2e8f0;
+            background: #f8fafc;
+            color: #475569
+        }
+
+        /* details blocks */
+        details {
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 18px;
+            padding: 12px
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: 950
+        }
+
+        summary::-webkit-details-marker {
+            display: none
+        }
+
+        summary:before {
+            content: "▸";
+            display: inline-block;
+            margin-right: 10px;
+            transform: translateY(-1px);
+            color: var(--muted);
+        }
+
+        details[open] summary:before {
+            content: "▾"
+        }
+
+        .code {
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: var(--mono);
+            background: #0b1220;
+            color: #e5e7eb;
+            border: 1px solid #111827;
+            border-radius: 16px;
+            padding: 12px;
+            overflow: auto;
+            max-height: 380px;
+        }
+
+        /* dnsbl */
+        .chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px
+        }
+
+        .listBox {
+            margin-top: 10px;
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 16px;
+            padding: 12px;
+        }
+
+        .listBox h4 {
+            margin: 0 0 8px;
+            font-size: 13px
+        }
+
+        .listBox ul {
+            margin: 0;
+            padding-left: 18px
+        }
+
+        .listBox li {
+            margin: 4px 0;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .empty {
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        .fade {
+            animation: fade .18s ease-out
+        }
+
+        @keyframes fade {
+            from {
+                opacity: .3;
+                transform: translateY(4px)
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+    </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="top">
-    <div class="brand">
-      <h1>Mail Tester</h1>
-      <p>
-        Step 1: Send your email to the address below. Step 2: Click <b>Check your score</b>.
-        You’ll get a clean report with fixes.
-      </p>
+    <div class="top">
+        <div class="brand">
+            <h1>Mail Tester</h1>
+            <p>
+                Step 1: Send your email to the address below. Step 2: Click <b>Check your score</b>.
+                You’ll get a clean report with fixes.
+            </p>
+        </div>
+        <div class="apiPill">API: <b id="apiBaseText">http://localhost:8000</b></div>
     </div>
-    <div class="apiPill">API: <b id="apiBaseText">http://localhost:8000</b></div>
-  </div>
 
-  <div class="hero fade">
-    <div class="heroHd">
-      <div>
-        <div class="t">First, send your email to:</div>
-        <div class="s">We generate a unique address for your test.</div>
-      </div>
-      <div class="small">No account needed</div>
-    </div>
-    <div class="heroBd">
-      <div class="addrRow">
-        <input id="toAddress" class="addrInput" readonly placeholder="Generating..." />
-        <div class="btnRow">
-          <button id="btnCopy" class="btn">Copy</button>
-          <button id="btnCheck" class="btn primary" disabled>Check your score</button>
+    <div class="hero fade">
+        <div class="heroHd">
+            <div>
+                <div class="t">First, send your email to:</div>
+                <div class="s">We generate a unique address for your test.</div>
+            </div>
+            <div class="small">No account needed</div>
         </div>
-      </div>
-
-      <div class="subRow">
-        <div class="status">
-          <span id="dot" class="dot warn"></span>
-          <span id="statusText">Generating address…</span>
-        </div>
-        <div class="btnRow">
-          <button id="btnRegen" class="btn">Regenerate</button>
-          <button id="btnApi" class="btn ghost">API Base URL</button>
-        </div>
-      </div>
-
-      <div id="hint" class="hint">
-        Tip: Send the email from your normal mail client. Then click <b>Check your score</b>.
-      </div>
-
-      <div id="apiBox" class="apiBox">
-        <div class="label">API Base URL</div>
-        <input id="apiBase" class="addrInput" value="http://localhost:8000" />
-        <div class="small" style="margin-top:8px">
-          Example: http://localhost:8000 (local) or your domain in production.
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="results" class="results hidden fade">
-    <div class="grid">
-      <!-- LEFT: User-friendly report -->
-      <div class="card">
-        <div class="cardHd">
-          <div class="t">Deliverability Report</div>
-          <div class="s" id="reportStatus">—</div>
-        </div>
-        <div class="cardBd">
-
-          <div class="scoreHero">
-            <div class="scoreLeft">
-              <div class="gauge">
-                <div style="text-align:center">
-                  <div class="n" id="scoreNum">-</div>
-                  <div class="sub">/ 10</div>
+        <div class="heroBd">
+            <div class="addrRow">
+                <input id="toAddress" class="addrInput" readonly placeholder="Generating..."/>
+                <div class="btnRow">
+                    <button id="btnCopy" class="btn">Copy</button>
+                    <button id="btnCheck" class="btn primary" disabled>Check your score</button>
                 </div>
-              </div>
-              <div class="scoreTxt">
-                <div class="title" id="gradeText">—</div>
-                <div class="desc" id="summaryText">—</div>
-              </div>
             </div>
-            <div class="badgeRow">
-              <span class="badge" id="badgeStatus">status</span>
-              <span class="badge" id="badgeSA">SpamAssassin</span>
+
+            <div class="subRow">
+                <div class="status">
+                    <span id="dot" class="dot warn"></span>
+                    <span id="statusText">Generating address…</span>
+                </div>
+                <div class="btnRow">
+                    <button id="btnRegen" class="btn">Regenerate</button>
+                    <button id="btnApi" class="btn ghost">API Base URL</button>
+                </div>
             </div>
-          </div>
 
-          <div class="sectionTitle">
-            <h3>Actionable issues</h3>
-            <div class="meta" id="issueCount">0</div>
-          </div>
-          <div id="issues" class="issues"></div>
-
-          <div class="divider"></div>
-
-          <details>
-            <summary>SpamAssassin report</summary>
-            <div class="small" id="saMeta" style="margin-top:8px">—</div>
-            <div class="code" id="saReport">(no report)</div>
-          </details>
-
-          <div style="height:10px"></div>
-
-          <details>
-            <summary>DNSBL details</summary>
-            <div id="dnsblBlock" class="small" style="margin-top:8px;color:var(--muted)">(no data)</div>
-          </details>
-
-        </div>
-      </div>
-
-      <!-- RIGHT: Quick facts + checks + debug -->
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div class="card">
-          <div class="cardHd">
-            <div class="t">Quick facts</div>
-            <div class="s">Message meta</div>
-          </div>
-          <div class="cardBd">
-            <div class="kv">
-              <div class="k">Test address</div><div class="v mono" id="m_to">—</div>
-              <div class="k">Received</div><div class="v" id="m_received">—</div>
-              <div class="k">Sender domain</div><div class="v mono" id="m_domain">—</div>
-              <div class="k">Sender IP</div><div class="v mono" id="m_ip">—</div>
-              <div class="k">Message-ID</div><div class="v mono" id="m_msgid">—</div>
-              <div class="k">Subject</div><div class="v" id="m_subject">—</div>
+            <div id="hint" class="hint">
+                Tip: Send the email from your normal mail client. Then click <b>Check your score</b>.
             </div>
-          </div>
-        </div>
 
-        <div class="card">
-          <div class="cardHd">
-            <div class="t">Checks</div>
-            <div class="s">Pass / Fail</div>
-          </div>
-          <div class="cardBd">
-            <div class="tiles" id="tiles"></div>
-          </div>
+            <div id="apiBox" class="apiBox">
+                <div class="label">API Base URL</div>
+                <input id="apiBase" class="addrInput" value="http://localhost:8000"/>
+                <div class="small" style="margin-top:8px">
+                    Example: http://localhost:8000 (local) or your domain in production.
+                </div>
+            </div>
         </div>
-
-        <div class="card">
-          <div class="cardHd">
-            <div class="t">Debug</div>
-            <div class="s">Optional</div>
-          </div>
-          <div class="cardBd">
-            <details>
-              <summary>Raw JSON</summary>
-              <div class="code" id="rawJson"></div>
-            </details>
-          </div>
-        </div>
-
-      </div>
     </div>
-  </div>
+
+    <div id="results" class="results hidden fade">
+        <div class="grid">
+            <!-- LEFT: User-friendly report -->
+            <div class="card">
+                <div class="cardHd">
+                    <div class="t">Deliverability Report</div>
+                    <div class="s" id="reportStatus">—</div>
+                </div>
+                <div class="cardBd">
+
+                    <div class="scoreHero">
+                        <div class="scoreLeft">
+                            <div class="gauge">
+                                <div style="text-align:center">
+                                    <div class="n" id="scoreNum">-</div>
+                                    <div class="sub">/ 10</div>
+                                </div>
+                            </div>
+                            <div class="scoreTxt">
+                                <div class="title" id="gradeText">—</div>
+                                <div class="desc" id="summaryText">—</div>
+                            </div>
+                        </div>
+                        <div class="badgeRow">
+                            <span class="badge" id="badgeStatus">status</span>
+                            <span class="badge" id="badgeSA">SpamAssassin</span>
+                        </div>
+                    </div>
+
+                    <div class="sectionTitle">
+                        <h3>Actionable issues</h3>
+                        <div class="meta" id="issueCount">0</div>
+                    </div>
+                    <div id="issues" class="issues"></div>
+
+                    <div class="divider"></div>
+
+                    <details>
+                        <summary>SpamAssassin report</summary>
+                        <div class="small" id="saMeta" style="margin-top:8px">—</div>
+                        <div class="code" id="saReport">(no report)</div>
+                    </details>
+
+                    <div style="height:10px"></div>
+
+                    <details>
+                        <summary>DNSBL details</summary>
+                        <div id="dnsblBlock" class="small" style="margin-top:8px;color:var(--muted)">(no data)</div>
+                    </details>
+
+                </div>
+            </div>
+
+            <!-- RIGHT: Quick facts + checks + debug -->
+            <div style="display:flex;flex-direction:column;gap:14px">
+                <div class="card">
+                    <div class="cardHd">
+                        <div class="t">Quick facts</div>
+                        <div class="s">Message meta</div>
+                    </div>
+                    <div class="cardBd">
+                        <div class="kv">
+                            <div class="k">Test address</div>
+                            <div class="v mono" id="m_to">—</div>
+                            <div class="k">Received</div>
+                            <div class="v" id="m_received">—</div>
+                            <div class="k">Sender domain</div>
+                            <div class="v mono" id="m_domain">—</div>
+                            <div class="k">Sender IP</div>
+                            <div class="v mono" id="m_ip">—</div>
+                            <div class="k">Message-ID</div>
+                            <div class="v mono" id="m_msgid">—</div>
+                            <div class="k">Subject</div>
+                            <div class="v" id="m_subject">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="cardHd">
+                        <div class="t">Checks</div>
+                        <div class="s">Pass / Fail</div>
+                    </div>
+                    <div class="cardBd">
+                        <div class="tiles" id="tiles"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="cardHd">
+                        <div class="t">Debug</div>
+                        <div class="s">Optional</div>
+                    </div>
+                    <div class="cardBd">
+                        <details>
+                            <summary>Raw JSON</summary>
+                            <div class="code" id="rawJson"></div>
+                        </details>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-  let API_BASE = "http://localhost:8000";
-  let currentTo = null;
-  let pollTimer = null;
+    let API_BASE = `${location.origin}/api`;
+    let currentTo = null;
+    let pollTimer = null;
 
-  const $ = (id) => document.getElementById(id);
-  const safeJson = (o) => { try { return JSON.stringify(o, null, 2); } catch { return String(o); } };
+    const $ = (id) => document.getElementById(id);
+    const safeJson = (o) => {
+        try {
+            return JSON.stringify(o, null, 2);
+        } catch {
+            return String(o);
+        }
+    };
 
-  function setApiBase(v){
-    API_BASE = (v || "").trim().replace(/\/+$/,"") || "http://localhost:8000";
-    $("apiBaseText").textContent = API_BASE;
-  }
-  function setStatus(text, kind="warn"){
-    $("statusText").textContent = text;
-    $("dot").className = "dot " + (kind || "");
-  }
-  function setHint(html, kind=""){
-    const h = $("hint");
-    h.classList.remove("good","bad");
-    if(kind) h.classList.add(kind);
-    h.innerHTML = html;
-  }
-  function kindFromStatus(st){
-    if(st === "analyzed") return "good";
-    if(st === "processing" || st === "pending") return "warn";
-    if(st === "error" || st === "expired") return "bad";
-    return "warn";
-  }
-  function badge(el, kind, text){
-    el.classList.remove("good","warn","bad");
-    if(kind) el.classList.add(kind);
-    el.textContent = text;
-  }
-  function tag(kind, text){
-    const s = document.createElement("span");
-    s.className = "tag " + (kind || "neutral");
-    s.textContent = text;
-    return s;
-  }
-
-  // ---------- API ----------
-  async function apiGenerate(){
-    const res = await fetch(`${API_BASE}/generate`, { method:"POST" });
-    const data = await res.json().catch(()=> ({}));
-    if(!res.ok) throw new Error(`Generate failed: ${res.status}`);
-
-    // Accept different shapes:
-    // {to_address:"..."} OR {result:"..."} OR {result:{to_address:"..."}}
-    const addr =
-      data.to_address ||
-      data.toAddress ||
-      data.address ||
-      data.email ||
-      data.test_address ||
-      (typeof data.result === "string" ? data.result : null) ||
-      data.result?.to_address ||
-      data.result?.address ||
-      data.result?.email;
-
-    if(!addr) throw new Error("Generate response did not include address. Raw: " + safeJson(data));
-    return addr;
-  }
-
-  async function apiResult(toAddr){
-    const encoded = encodeURIComponent(toAddr);
-    const res = await fetch(`${API_BASE}/result/${encoded}`);
-    const data = await res.json().catch(()=> ({}));
-    if(!res.ok) throw new Error(`Result failed: ${res.status}`);
-    return data;
-  }
-
-  // ---------- UX helpers: turn raw fields into FIXES ----------
-  function fixSuggestion(issueText){
-    const t = (issueText || "").toLowerCase();
-    if(t.includes("list-unsubscribe")) return "Add a List-Unsubscribe header (mailto: and/or https) for bulk mail.";
-    if(t.includes("spf")) return "Publish an SPF record (v=spf1 ...) that authorizes your sending IP/provider.";
-    if(t.includes("dkim")) return "Enable DKIM signing for your domain and publish the selector TXT record.";
-    if(t.includes("dmarc")) return "Add a DMARC policy at _dmarc (start with p=none, then enforce).";
-    if(t.includes("reverse") || t.includes("rdns")) return "Set PTR (reverse DNS) to match your HELO / sending domain.";
-    if(t.includes("blacklist") || t.includes("dnsbl")) return "Investigate the listing, fix the root cause, and request delisting.";
-    if(t.includes("message-id")) return "Ensure your mail server generates a valid Message-ID header.";
-    if(t.includes("date header")) return "Ensure your mail includes a Date header (RFC 5322).";
-    return "Review email headers and authentication for this item.";
-  }
-  function impactLabel(value){
-    // in your Score: minus(value). so 0.2..2.0 typical.
-    const v = Number(value || 0);
-    if(v >= 2) return "High";
-    if(v >= 0.8) return "Medium";
-    return "Low";
-  }
-
-  function renderIssues(result){
-    const host = $("issues");
-    host.innerHTML = "";
-
-    const items = Array.isArray(result.items) ? result.items : [];
-    $("issueCount").textContent = `${items.length} issue(s)`;
-
-    if(items.length === 0){
-      const ok = document.createElement("div");
-      ok.className = "hint good";
-      ok.innerHTML = "<b>No issues detected.</b> Your email looks good for deliverability.";
-      host.appendChild(ok);
-      return;
+    function setApiBase(v) {
+        API_BASE = (v || "").trim().replace(/\/+$/, "") || "http://localhost:8000";
+        $("apiBaseText").textContent = API_BASE;
     }
 
-    // sort by biggest impact first
-    const sorted = items.slice().sort((a,b)=> (Number(b.value||0) - Number(a.value||0)));
+    function setStatus(text, kind = "warn") {
+        $("statusText").textContent = text;
+        $("dot").className = "dot " + (kind || "");
+    }
 
-    for(const it of sorted){
-      const what = it.text || it.title || "Issue";
-      const val = Number(it.value ?? 0);
-      const impact = impactLabel(val);
-      const fix = fixSuggestion(what);
+    function setHint(html, kind = "") {
+        const h = $("hint");
+        h.classList.remove("good", "bad");
+        if (kind) h.classList.add(kind);
+        h.innerHTML = html;
+    }
 
-      const el = document.createElement("div");
-      el.className = "issue";
-      el.innerHTML = `
+    function kindFromStatus(st) {
+        if (st === "analyzed") return "good";
+        if (st === "processing" || st === "pending") return "warn";
+        if (st === "error" || st === "expired") return "bad";
+        return "warn";
+    }
+
+    function badge(el, kind, text) {
+        el.classList.remove("good", "warn", "bad");
+        if (kind) el.classList.add(kind);
+        el.textContent = text;
+    }
+
+    function tag(kind, text) {
+        const s = document.createElement("span");
+        s.className = "tag " + (kind || "neutral");
+        s.textContent = text;
+        return s;
+    }
+
+    // ---------- API ----------
+    async function apiGenerate() {
+        const res = await fetch(`${API_BASE}/generate`, {method: "POST"});
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(`Generate failed: ${res.status}`);
+
+        // Accept different shapes:
+        // {to_address:"..."} OR {result:"..."} OR {result:{to_address:"..."}}
+        const addr =
+            data.to_address ||
+            data.toAddress ||
+            data.address ||
+            data.email ||
+            data.test_address ||
+            (typeof data.result === "string" ? data.result : null) ||
+            data.result?.to_address ||
+            data.result?.address ||
+            data.result?.email;
+
+        if (!addr) throw new Error("Generate response did not include address. Raw: " + safeJson(data));
+        return addr;
+    }
+
+    async function apiResult(toAddr) {
+        const encoded = encodeURIComponent(toAddr);
+        const res = await fetch(`${API_BASE}/result/${encoded}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(`Result failed: ${res.status}`);
+        return data;
+    }
+
+    // ---------- UX helpers: turn raw fields into FIXES ----------
+    function fixSuggestion(issueText) {
+        const t = (issueText || "").toLowerCase();
+        if (t.includes("list-unsubscribe")) return "Add a List-Unsubscribe header (mailto: and/or https) for bulk mail.";
+        if (t.includes("spf")) return "Publish an SPF record (v=spf1 ...) that authorizes your sending IP/provider.";
+        if (t.includes("dkim")) return "Enable DKIM signing for your domain and publish the selector TXT record.";
+        if (t.includes("dmarc")) return "Add a DMARC policy at _dmarc (start with p=none, then enforce).";
+        if (t.includes("reverse") || t.includes("rdns")) return "Set PTR (reverse DNS) to match your HELO / sending domain.";
+        if (t.includes("blacklist") || t.includes("dnsbl")) return "Investigate the listing, fix the root cause, and request delisting.";
+        if (t.includes("message-id")) return "Ensure your mail server generates a valid Message-ID header.";
+        if (t.includes("date header")) return "Ensure your mail includes a Date header (RFC 5322).";
+        return "Review email headers and authentication for this item.";
+    }
+
+    function impactLabel(value) {
+        // in your Score: minus(value). so 0.2..2.0 typical.
+        const v = Number(value || 0);
+        if (v >= 2) return "High";
+        if (v >= 0.8) return "Medium";
+        return "Low";
+    }
+
+    function renderIssues(result) {
+        const host = $("issues");
+        host.innerHTML = "";
+
+        const items = Array.isArray(result.items) ? result.items : [];
+        $("issueCount").textContent = `${items.length} issue(s)`;
+
+        if (items.length === 0) {
+            const ok = document.createElement("div");
+            ok.className = "hint good";
+            ok.innerHTML = "<b>No issues detected.</b> Your email looks good for deliverability.";
+            host.appendChild(ok);
+            return;
+        }
+
+        // sort by biggest impact first
+        const sorted = items.slice().sort((a, b) => (Number(b.value || 0) - Number(a.value || 0)));
+
+        for (const it of sorted) {
+            const what = it.text || it.title || "Issue";
+            const val = Number(it.value ?? 0);
+            const impact = impactLabel(val);
+            const fix = fixSuggestion(what);
+
+            const el = document.createElement("div");
+            el.className = "issue";
+            el.innerHTML = `
         <div>
           <div class="what">${what}</div>
           <div class="impact"><b>Impact:</b> ${impact} &nbsp;•&nbsp; <span class="mono">-${val.toFixed(1)}</span> points</div>
@@ -595,323 +988,329 @@
         </div>
         <div class="pill">-${val.toFixed(1)}</div>
       `;
-      host.appendChild(el);
-    }
-  }
-
-  function renderMeta(result){
-    const m = result.meta || {};
-    $("m_to").textContent = m.to_address || "—";
-    $("m_received").textContent = m.received_at || "—";
-    $("m_domain").textContent = m.sender_domain || "—";
-    $("m_ip").textContent = (m.sender_ip ?? "—");
-    $("m_msgid").textContent = m.message_id || "—";
-    $("m_subject").textContent = m.subject || "—";
-  }
-
-  function verdictFromObj(obj){
-    // returns {kind,text}
-    if(obj == null) return {kind:"neutral", text:"Unknown"};
-    if(typeof obj === "boolean") return obj ? {kind:"good", text:"Pass"} : {kind:"bad", text:"Fail"};
-    if(typeof obj === "string"){
-      const t = obj.toLowerCase().trim();
-      if(["pass","ok","true","exists","found","present","yes"].includes(t)) return {kind:"good", text:"Pass"};
-      if(["fail","false","missing","not_found","no"].includes(t)) return {kind:"bad", text:"Fail"};
-      if(["skipped"].includes(t)) return {kind:"neutral", text:"Skipped"};
-      return {kind:"neutral", text:obj};
-    }
-    if(obj.skipped === true) return {kind:"neutral", text:"Skipped"};
-    const candidates = [obj.pass, obj.ok, obj.success, obj.exists, obj.found];
-    for(const c of candidates){
-      if(c === true || String(c).toLowerCase() === "true") return {kind:"good", text:"Pass"};
-      if(c === false || String(c).toLowerCase() === "false") return {kind:"bad", text:"Fail"};
-    }
-    return {kind:"neutral", text:"Unknown"};
-  }
-
-  function tile(name, hint, verdict){
-    const d = document.createElement("div");
-    d.className = "tile";
-    const left = document.createElement("div");
-    left.style.minWidth = "0";
-    left.innerHTML = `<div class="name">${name}</div><div class="hint">${hint}</div>`;
-    const right = document.createElement("div");
-    right.appendChild(tag(verdict.kind || "neutral", verdict.text || "—"));
-    d.appendChild(left);
-    d.appendChild(right);
-    return d;
-  }
-
-  function renderChecks(result){
-    const host = $("tiles");
-    host.innerHTML = "";
-
-    const checks = result.checks || {};
-
-    const spf = verdictFromObj(checks.spf);
-    const dkim = verdictFromObj(checks.dkim);
-    const dmarc = verdictFromObj(checks.dmarc);
-    const rdns = verdictFromObj(checks.rdns);
-
-    // DNSBL special
-    const bl = checks.blacklists || checks.dnsbl || null;
-    const blVerd = verdictFromObj(bl);
-
-    host.appendChild(tile("SPF", "TXT record v=spf1", spf));
-    host.appendChild(tile("DKIM", "DomainKey signature + selector record", dkim));
-    host.appendChild(tile("DMARC", "_dmarc policy record", dmarc));
-    host.appendChild(tile("rDNS", "PTR / reverse DNS for sending IP", rdns));
-    host.appendChild(tile("DNSBL", "IP reputation on blocklists", blVerd));
-
-    // DNSBL details
-    const dnsHost = $("dnsblBlock");
-    dnsHost.innerHTML = "";
-    const res = bl?.results || null;
-    const sum = bl?.summary || null;
-
-    if(!res || typeof res !== "object" || Object.keys(res).length === 0){
-      dnsHost.textContent = "(no DNSBL details)";
-      return;
+            host.appendChild(el);
+        }
     }
 
-    const listed=[], notListed=[], timeout=[], err=[];
-    for(const [name, st] of Object.entries(res)){
-      if(st === "listed") listed.push(name);
-      else if(st === "not_listed") notListed.push(name);
-      else if(st === "timeout") timeout.push(name);
-      else err.push(name);
+    function renderMeta(result) {
+        const m = result.meta || {};
+        $("m_to").textContent = m.to_address || "—";
+        $("m_received").textContent = m.received_at || "—";
+        $("m_domain").textContent = m.sender_domain || "—";
+        $("m_ip").textContent = (m.sender_ip ?? "—");
+        $("m_msgid").textContent = m.message_id || "—";
+        $("m_subject").textContent = m.subject || "—";
     }
 
-    const chips = document.createElement("div");
-    chips.className = "chips";
-    chips.appendChild(tag(listed.length ? "bad" : "good", `Listed: ${listed.length}`));
-    chips.appendChild(tag("good", `Not listed: ${notListed.length}`));
-    chips.appendChild(tag(timeout.length ? "warn" : "neutral", `Timeout: ${timeout.length}`));
-    chips.appendChild(tag(err.length ? "warn" : "neutral", `Error: ${err.length}`));
-    dnsHost.appendChild(chips);
-
-    if(sum){
-      const s = document.createElement("div");
-      s.className = "small";
-      s.style.marginTop = "10px";
-      s.textContent = `Checked ${bl.checked ?? Object.keys(res).length} lists.`;
-      dnsHost.appendChild(s);
+    function verdictFromObj(obj) {
+        // returns {kind,text}
+        if (obj == null) return {kind: "neutral", text: "Unknown"};
+        if (typeof obj === "boolean") return obj ? {kind: "good", text: "Pass"} : {kind: "bad", text: "Fail"};
+        if (typeof obj === "string") {
+            const t = obj.toLowerCase().trim();
+            if (["pass", "ok", "true", "exists", "found", "present", "yes"].includes(t)) return {kind: "good", text: "Pass"};
+            if (["fail", "false", "missing", "not_found", "no"].includes(t)) return {kind: "bad", text: "Fail"};
+            if (["skipped"].includes(t)) return {kind: "neutral", text: "Skipped"};
+            return {kind: "neutral", text: obj};
+        }
+        if (obj.skipped === true) return {kind: "neutral", text: "Skipped"};
+        const candidates = [obj.pass, obj.ok, obj.success, obj.exists, obj.found];
+        for (const c of candidates) {
+            if (c === true || String(c).toLowerCase() === "true") return {kind: "good", text: "Pass"};
+            if (c === false || String(c).toLowerCase() === "false") return {kind: "bad", text: "Fail"};
+        }
+        return {kind: "neutral", text: "Unknown"};
     }
 
-    function listBox(title, arr){
-      const box = document.createElement("div");
-      box.className = "listBox";
-      box.innerHTML = `<h4>${title}</h4>`;
-      if(arr.length === 0){
-        const e = document.createElement("div");
-        e.className = "empty";
-        e.textContent = "(none)";
-        box.appendChild(e);
-      } else {
-        const ul = document.createElement("ul");
-        arr.forEach(x=>{
-          const li = document.createElement("li");
-          li.textContent = x;
-          ul.appendChild(li);
-        });
-        box.appendChild(ul);
-      }
-      return box;
+    function tile(name, hint, verdict) {
+        const d = document.createElement("div");
+        d.className = "tile";
+        const left = document.createElement("div");
+        left.style.minWidth = "0";
+        left.innerHTML = `<div class="name">${name}</div><div class="hint">${hint}</div>`;
+        const right = document.createElement("div");
+        right.appendChild(tag(verdict.kind || "neutral", verdict.text || "—"));
+        d.appendChild(left);
+        d.appendChild(right);
+        return d;
     }
 
-    dnsHost.appendChild(listBox("Listed on", listed));
-    dnsHost.appendChild(listBox("Timeout", timeout));
-    dnsHost.appendChild(listBox("Other errors", err));
-  }
+    function renderChecks(result) {
+        const host = $("tiles");
+        host.innerHTML = "";
 
-  function renderSpamAssassin(result){
-    const sa = result.spamassassin || {};
-    const report = (sa.report || "").trim();
-    $("saReport").textContent = report ? report : "(no report)";
-    if(sa.score != null && sa.threshold != null){
-      $("saMeta").textContent = `Score: ${sa.score} / ${sa.threshold}`;
-    } else if(sa.error){
-      $("saMeta").textContent = `Error: ${sa.error}`;
-    } else {
-      $("saMeta").textContent = "—";
-    }
-  }
+        const checks = result.checks || {};
 
-  function renderTopSummary(status, result){
-    $("reportStatus").textContent = `Status: ${status}`;
-    const score = (typeof result.score === "number") ? result.score : Number(result.score || 0);
-    $("scoreNum").textContent = isFinite(score) ? score.toFixed(1) : "-";
-    $("gradeText").textContent = result.title || "—";
+        const spf = verdictFromObj(checks.spf);
+        const dkim = verdictFromObj(checks.dkim);
+        const dmarc = verdictFromObj(checks.dmarc);
+        const rdns = verdictFromObj(checks.rdns);
 
-    // 1-line summary that normal users understand
-    const issueCount = Array.isArray(result.items) ? result.items.length : 0;
-    const best = score >= 9.5 ? "Excellent" : (score >= 8 ? "Good" : (score >= 6 ? "Needs work" : "Poor"));
-    $("summaryText").textContent =
-      issueCount === 0
-        ? `${best}. No major deliverability issues detected.`
-        : `${best}. Found ${issueCount} issue(s). Fix the items below to improve inbox placement.`;
+        // DNSBL special
+        const bl = checks.blacklists || checks.dnsbl || null;
+        const blVerd = verdictFromObj(bl);
 
-    badge($("badgeStatus"), kindFromStatus(status), status);
+        host.appendChild(tile("SPF", "TXT record v=spf1", spf));
+        host.appendChild(tile("DKIM", "DomainKey signature + selector record", dkim));
+        host.appendChild(tile("DMARC", "_dmarc policy record", dmarc));
+        host.appendChild(tile("rDNS", "PTR / reverse DNS for sending IP", rdns));
+        host.appendChild(tile("DNSBL", "IP reputation on blocklists", blVerd));
 
-    // SpamAssassin badge
-    const sa = result.spamassassin || null;
-    if(sa && sa.error){
-      badge($("badgeSA"), "warn", "SpamAssassin: error");
-    } else if(sa && sa.report){
-      // try to extract "Spam: False ; -1.0 / 5.0"
-      const m = sa.report.match(/Spam:\s*(True|False)\s*;\s*([-\d.]+)\s*\/\s*([-\d.]+)/i);
-      if(m){
-        const isSpam = m[1].toLowerCase() === "true";
-        const sc = m[2], th = m[3];
-        badge($("badgeSA"), isSpam ? "bad" : "good", `SpamAssassin: ${sc} / ${th}`);
-      } else {
-        badge($("badgeSA"), "good", "SpamAssassin: OK");
-      }
-    } else {
-      badge($("badgeSA"), "", "SpamAssassin: n/a");
-    }
-  }
+        // DNSBL details
+        const dnsHost = $("dnsblBlock");
+        dnsHost.innerHTML = "";
+        const res = bl?.results || null;
+        const sum = bl?.summary || null;
 
-  function renderAll(payload){
-    $("results").classList.remove("hidden");
-    $("rawJson").textContent = safeJson(payload);
+        if (!res || typeof res !== "object" || Object.keys(res).length === 0) {
+            dnsHost.textContent = "(no DNSBL details)";
+            return;
+        }
 
-    const status = payload?.status || "unknown";
-    const result = payload?.result || {};
+        const listed = [], notListed = [], timeout = [], err = [];
+        for (const [name, st] of Object.entries(res)) {
+            if (st === "listed") listed.push(name);
+            else if (st === "not_listed") notListed.push(name);
+            else if (st === "timeout") timeout.push(name);
+            else err.push(name);
+        }
 
-    renderTopSummary(status, result);
-    renderIssues(result);
-    renderMeta(result);
-    renderChecks(result);
-    renderSpamAssassin(result);
-  }
+        const chips = document.createElement("div");
+        chips.className = "chips";
+        chips.appendChild(tag(listed.length ? "bad" : "good", `Listed: ${listed.length}`));
+        chips.appendChild(tag("good", `Not listed: ${notListed.length}`));
+        chips.appendChild(tag(timeout.length ? "warn" : "neutral", `Timeout: ${timeout.length}`));
+        chips.appendChild(tag(err.length ? "warn" : "neutral", `Error: ${err.length}`));
+        dnsHost.appendChild(chips);
 
-  // ---------- Polling ----------
-  async function refreshOnce(){
-    const payload = await apiResult(currentTo);
-    const st = payload?.status || "unknown";
+        if (sum) {
+            const s = document.createElement("div");
+            s.className = "small";
+            s.style.marginTop = "10px";
+            s.textContent = `Checked ${bl.checked ?? Object.keys(res).length} lists.`;
+            dnsHost.appendChild(s);
+        }
 
-    // show partial while waiting
-    $("results").classList.remove("hidden");
-    $("rawJson").textContent = safeJson(payload);
-    $("reportStatus").textContent = `Status: ${st}`;
+        function listBox(title, arr) {
+            const box = document.createElement("div");
+            box.className = "listBox";
+            box.innerHTML = `<h4>${title}</h4>`;
+            if (arr.length === 0) {
+                const e = document.createElement("div");
+                e.className = "empty";
+                e.textContent = "(none)";
+                box.appendChild(e);
+            } else {
+                const ul = document.createElement("ul");
+                arr.forEach(x => {
+                    const li = document.createElement("li");
+                    li.textContent = x;
+                    ul.appendChild(li);
+                });
+                box.appendChild(ul);
+            }
+            return box;
+        }
 
-    if(st === "analyzed" || st === "error" || st === "expired"){
-      renderAll(payload);
-      stopPolling();
-
-      if(st === "analyzed"){
-        setStatus("Analyzed. Showing results.", "good");
-        setHint("Done. Review the report below.", "good");
-      } else {
-        setStatus(`Finished with status: ${st}`, "bad");
-        setHint(`Run ended with status <b>${st}</b>. Open Debug → Raw JSON for details.`, "bad");
-      }
-
-      $("btnCheck").disabled = false;
-      $("btnCheck").textContent = "Check your score";
-      return;
+        dnsHost.appendChild(listBox("Listed on", listed));
+        dnsHost.appendChild(listBox("Timeout", timeout));
+        dnsHost.appendChild(listBox("Other errors", err));
     }
 
-    setStatus(`Waiting… (${st})`, "warn");
-    setHint(`We are waiting for the email to arrive and be analyzed. Current status: <b>${st}</b>.`, "");
-  }
+    function renderSpamAssassin(result) {
+        const sa = result.spamassassin || {};
+        const report = (sa.report || "").trim();
+        $("saReport").textContent = report ? report : "(no report)";
+        if (sa.score != null && sa.threshold != null) {
+            $("saMeta").textContent = `Score: ${sa.score} / ${sa.threshold}`;
+        } else if (sa.error) {
+            $("saMeta").textContent = `Error: ${sa.error}`;
+        } else {
+            $("saMeta").textContent = "—";
+        }
+    }
 
-  function startPolling(){
-    stopPolling();
-    pollTimer = setInterval(async ()=>{
-      try{ await refreshOnce(); }
-      catch(e){
+    function renderTopSummary(status, result) {
+        $("reportStatus").textContent = `Status: ${status}`;
+        const score = (typeof result.score === "number") ? result.score : Number(result.score || 0);
+        $("scoreNum").textContent = isFinite(score) ? score.toFixed(1) : "-";
+        $("gradeText").textContent = result.title || "—";
+
+        // 1-line summary that normal users understand
+        const issueCount = Array.isArray(result.items) ? result.items.length : 0;
+        const best = score >= 9.5 ? "Excellent" : (score >= 8 ? "Good" : (score >= 6 ? "Needs work" : "Poor"));
+        $("summaryText").textContent =
+            issueCount === 0
+                ? `${best}. No major deliverability issues detected.`
+                : `${best}. Found ${issueCount} issue(s). Fix the items below to improve inbox placement.`;
+
+        badge($("badgeStatus"), kindFromStatus(status), status);
+
+        // SpamAssassin badge
+        const sa = result.spamassassin || null;
+        if (sa && sa.error) {
+            badge($("badgeSA"), "warn", "SpamAssassin: error");
+        } else if (sa && sa.report) {
+            // try to extract "Spam: False ; -1.0 / 5.0"
+            const m = sa.report.match(/Spam:\s*(True|False)\s*;\s*([-\d.]+)\s*\/\s*([-\d.]+)/i);
+            if (m) {
+                const isSpam = m[1].toLowerCase() === "true";
+                const sc = m[2], th = m[3];
+                badge($("badgeSA"), isSpam ? "bad" : "good", `SpamAssassin: ${sc} / ${th}`);
+            } else {
+                badge($("badgeSA"), "good", "SpamAssassin: OK");
+            }
+        } else {
+            badge($("badgeSA"), "", "SpamAssassin: n/a");
+        }
+    }
+
+    function renderAll(payload) {
+        $("results").classList.remove("hidden");
+        $("rawJson").textContent = safeJson(payload);
+
+        const status = payload?.status || "unknown";
+        const result = payload?.result || {};
+
+        renderTopSummary(status, result);
+        renderIssues(result);
+        renderMeta(result);
+        renderChecks(result);
+        renderSpamAssassin(result);
+    }
+
+    // ---------- Polling ----------
+    async function refreshOnce() {
+        const payload = await apiResult(currentTo);
+        const st = payload?.status || "unknown";
+
+        // show partial while waiting
+        $("results").classList.remove("hidden");
+        $("rawJson").textContent = safeJson(payload);
+        $("reportStatus").textContent = `Status: ${st}`;
+
+        if (st === "analyzed" || st === "error" || st === "expired") {
+            renderAll(payload);
+            stopPolling();
+
+            if (st === "analyzed") {
+                setStatus("Analyzed. Showing results.", "good");
+                setHint("Done. Review the report below.", "good");
+            } else {
+                setStatus(`Finished with status: ${st}`, "bad");
+                setHint(`Run ended with status <b>${st}</b>. Open Debug → Raw JSON for details.`, "bad");
+            }
+
+            $("btnCheck").disabled = false;
+            $("btnCheck").textContent = "Check your score";
+            return;
+        }
+
+        setStatus(`Waiting… (${st})`, "warn");
+        setHint(`We are waiting for the email to arrive and be analyzed. Current status: <b>${st}</b>.`, "");
+    }
+
+    function startPolling() {
         stopPolling();
-        setStatus("Error: " + (e?.message || e), "bad");
-        setHint("An API error occurred. Check backend logs.", "bad");
+        pollTimer = setInterval(async () => {
+            try {
+                await refreshOnce();
+            } catch (e) {
+                stopPolling();
+                setStatus("Error: " + (e?.message || e), "bad");
+                setHint("An API error occurred. Check backend logs.", "bad");
+                $("btnCheck").disabled = false;
+                $("btnCheck").textContent = "Check your score";
+            }
+        }, 2500);
+    }
+
+    function stopPolling() {
+        if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    // ---------- Actions ----------
+    async function generateAddress() {
+        $("toAddress").value = "";
+        $("btnCheck").disabled = true;
+        currentTo = null;
+
+        setStatus("Generating address…", "warn");
+        setHint("Generating a new test address…", "");
+
+        const addr = await apiGenerate();
+        currentTo = addr;
+        $("toAddress").value = addr;
+
+        setStatus("Address ready. Send your email, then click Check your score.", "good");
+        setHint(`Send your email to <b>${addr}</b>, then click <b>Check your score</b>.`, "");
         $("btnCheck").disabled = false;
-        $("btnCheck").textContent = "Check your score";
-      }
-    }, 2500);
-  }
-  function stopPolling(){
-    if(pollTimer){ clearInterval(pollTimer); pollTimer = null; }
-  }
-
-  // ---------- Actions ----------
-  async function generateAddress(){
-    $("toAddress").value = "";
-    $("btnCheck").disabled = true;
-    currentTo = null;
-
-    setStatus("Generating address…", "warn");
-    setHint("Generating a new test address…", "");
-
-    const addr = await apiGenerate();
-    currentTo = addr;
-    $("toAddress").value = addr;
-
-    setStatus("Address ready. Send your email, then click Check your score.", "good");
-    setHint(`Send your email to <b>${addr}</b>, then click <b>Check your score</b>.`, "");
-    $("btnCheck").disabled = false;
-  }
-
-  $("btnCopy").addEventListener("click", async ()=>{
-    const v = $("toAddress").value;
-    if(!v) return;
-    try{
-      await navigator.clipboard.writeText(v);
-      setStatus("Copied to clipboard.", "good");
-      setTimeout(()=> setStatus("Address ready. Send your email, then click Check your score.", "good"), 1200);
-    }catch{
-      $("toAddress").select();
-      document.execCommand("copy");
-      setStatus("Copied.", "good");
-      setTimeout(()=> setStatus("Address ready. Send your email, then click Check your score.", "good"), 1200);
     }
-  });
 
-  $("btnCheck").addEventListener("click", async ()=>{
-    if(!currentTo) return;
-    try{
-      $("btnCheck").disabled = true;
-      $("btnCheck").textContent = "Checking…";
-      setStatus("Checking for results…", "warn");
-      setHint("Fetching results and polling if needed…", "");
-      await refreshOnce();
-      startPolling();
-    }catch(e){
-      setStatus("Error: " + (e?.message || e), "bad");
-      setHint("An error occurred when calling the API.", "bad");
-      $("btnCheck").disabled = false;
-      $("btnCheck").textContent = "Check your score";
-    }
-  });
-
-  $("btnRegen").addEventListener("click", async ()=>{
-    stopPolling();
-    $("results").classList.add("hidden");
-    try{ await generateAddress(); }
-    catch(e){
-      setStatus("Error: " + (e?.message || e), "bad");
-      setHint("Generate failed. Verify API Base URL and backend logs.", "bad");
-    }
-  });
-
-  $("btnApi").addEventListener("click", ()=>{
-    $("apiBox").style.display = ($("apiBox").style.display === "block") ? "none" : "block";
-  });
-
-  $("apiBase").addEventListener("change", ()=>{
-    setApiBase($("apiBase").value);
-  });
-
-  // Init
-  (function init(){
-    const d = "http://localhost:8000";
-    setApiBase(d);
-    $("apiBase").value = d;
-    generateAddress().catch(e=>{
-      setStatus("Error: " + (e?.message || e), "bad");
-      setHint("Could not generate address. Check API Base URL and CORS settings.", "bad");
+    $("btnCopy").addEventListener("click", async () => {
+        const v = $("toAddress").value;
+        if (!v) return;
+        try {
+            await navigator.clipboard.writeText(v);
+            setStatus("Copied to clipboard.", "good");
+            setTimeout(() => setStatus("Address ready. Send your email, then click Check your score.", "good"), 1200);
+        } catch {
+            $("toAddress").select();
+            document.execCommand("copy");
+            setStatus("Copied.", "good");
+            setTimeout(() => setStatus("Address ready. Send your email, then click Check your score.", "good"), 1200);
+        }
     });
-  })();
+
+    $("btnCheck").addEventListener("click", async () => {
+        if (!currentTo) return;
+        try {
+            $("btnCheck").disabled = true;
+            $("btnCheck").textContent = "Checking…";
+            setStatus("Checking for results…", "warn");
+            setHint("Fetching results and polling if needed…", "");
+            await refreshOnce();
+            startPolling();
+        } catch (e) {
+            setStatus("Error: " + (e?.message || e), "bad");
+            setHint("An error occurred when calling the API.", "bad");
+            $("btnCheck").disabled = false;
+            $("btnCheck").textContent = "Check your score";
+        }
+    });
+
+    $("btnRegen").addEventListener("click", async () => {
+        stopPolling();
+        $("results").classList.add("hidden");
+        try {
+            await generateAddress();
+        } catch (e) {
+            setStatus("Error: " + (e?.message || e), "bad");
+            setHint("Generate failed. Verify API Base URL and backend logs.", "bad");
+        }
+    });
+
+    $("btnApi").addEventListener("click", () => {
+        $("apiBox").style.display = ($("apiBox").style.display === "block") ? "none" : "block";
+    });
+
+    $("apiBase").addEventListener("change", () => {
+        setApiBase($("apiBase").value);
+    });
+
+    // Init
+    (function init() {
+        const d = `${location.origin}/api`;
+        setApiBase(d);
+        $("apiBase").value = d;
+        generateAddress().catch(e => {
+            setStatus("Error: " + (e?.message || e), "bad");
+            setHint("Could not generate address. Check API Base URL and CORS settings.", "bad");
+        });
+    })();
 </script>
 </body>
 </html>
