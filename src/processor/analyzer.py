@@ -19,28 +19,27 @@ class Analyzer:
     def analyze(self):
         checks = {}
 
-        spf_ok = check_spf_record(self.domain)
-        checks["spf"] = {"status": "pass" if spf_ok else "missing", "domain": self.domain}
+        spf_ok,spf_list = check_spf_record(self.domain)
         if not spf_ok:
-            self.score.minus(
-                2.0,
-                "SPF record not found",
-                code="SPF_MISSING",
-                severity="high",
-                how_to_fix=f"Add an SPF TXT record for {self.domain}. Example: v=spf1 a mx ~all",
-            )
+            self.score.minus(2.0,"SPF record not found",code="SPF_MISSING",severity="high",how_to_fix=f"Add an SPF TXT record for {self.domain}. Example: v=spf1 a mx ~all",)
 
-        dkim_ok = check_dkim_record(self.domain)
-        checks["dkim"] = {"status": "pass" if dkim_ok else "missing", "domain": self.domain, "selector": "default"}
+        checks["spf"] = {"status": "ok" if spf_ok else "missing", "record":spf_list, "domain": self.domain}
+
+
+        dkim_ok, dkim_record, dkim_content = check_dkim_record(self.domain,self.msg)
         if not dkim_ok:
             self.score.minus(1.5,"DKIM record not found",code="DKIM_MISSING",severity="high",
-                how_to_fix=f"Configure DKIM signing for {self.domain} and publish the selector TXT record (e.g., default._domainkey.{self.domain}).",            )
+                how_to_fix=f"Configure DKIM signing for {self.domain} and publish the selector TXT record (e.g., default._domainkey.{self.domain}).")
+        checks["dkim"] = {"status": "ok" if dkim_ok else "missing", "record": dkim_record, "domain":self.domain, "dkim_content":dkim_content}
 
-        dmarc_ok = check_dmarc_record(self.domain)
-        checks["dmarc"] = {"status": "pass" if dmarc_ok else "missing", "domain": self.domain}
+
+
+        dmarc_ok, dmarc_record = check_dmarc_record(self.domain)
         if not dmarc_ok:
             self.score.minus(1.5,"DMARC record not found",code="DMARC_MISSING",severity="medium",
                 how_to_fix=f"Add a DMARC TXT record at _dmarc.{self.domain}. Start with p=none to monitor, then enforce.",)
+        checks["dmarc"] = {"status": "ok" if dmarc_ok else "missing", "record": dmarc_record, "domain":self.domain}
+
 
 
         headers = dict(self.msg.items())
@@ -68,7 +67,7 @@ class Analyzer:
             header_check["status"] = "warning"
             header_check["missing_recommended"].append("List-Unsubscribe")
             self.score.minus(
-                0.2,
+                0.02,
                 "List-Unsubscribe header missing",
                 code="HDR_LIST_UNSUB_MISSING",
                 severity="low",
