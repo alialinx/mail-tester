@@ -3,39 +3,104 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 import dns.resolver
 import smtplib
+
+from dns.rdatatype import register_type
+from lxml.html.diff import block_level_tags
+from sqlalchemy import true
+
 from src.config import DNSBL_TIMEOUT, DNSBL_LIFETIME, DNSBL_MAX_LISTS, DNSBL_CONCURRENCY
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def check_spf_record(domain: str) -> bool:
-    try:
-        records = dns.resolver.resolve(domain, "TXT")
-        for r in records:
-            if "v=spf1" in r.to_text():
-                return True
-        return False
-    except Exception:
-        return False
+    records = dns.resolver.resolve(domain, "TXT")
+    spf_list = []
+    for r in records:
+        spf_list.append(r.to_text())
+    if spf_list != []:
+        return True, spf_list
+    else:
+        return False, spf_list
+
+def _as_raw_string(msg_or_raw) -> str:
+
+    if isinstance(msg_or_raw, str):
+        return msg_or_raw
+    if hasattr(msg_or_raw, "as_string"):
+        return msg_or_raw.as_string()
+    return str(msg_or_raw)
+
+def get_dkim_content(msg_raw: str):
+    msg_raw = _as_raw_string(msg_raw)
+    msg_list = msg_raw.splitlines()
+
+    record_list = []
+    bool = False
+
+    for line in msg_list:
+        if line == "":
+            break
+
+        if line.lower().startswith("dkim-signature:"):
+            bool=True
+            record_list.append(line)
+            continue
+
+        if bool and line.startswith("\t"):
+            record_list.append(line)
+            continue
+
+        if bool:
+            break
+
+    if record_list:
+        return record_list
 
 
-def check_dkim_record(domain: str, selector: str = "default") -> bool:
-    try:
-        dkim_domain = f"{selector}._domainkey.{domain}"
-        dns.resolver.resolve(dkim_domain, "TXT")
-        return True
-    except Exception:
-        return False
+def get_dkim_selector(record_list: list):
+
+    clean_record_list= []
+
+    for clean in record_list:
+        clean_record_list.append(clean.lstrip(" \t"))
+    selector = None
+
+    for s in clean_record_list:
+        if s.startswith("s="):
+            selector = s.split("s=", 1)[1].split(";", 1)[0]
+            break
+
+    return selector
 
 
-def check_dmarc_record(domain: str) -> bool:
-    try:
-        dmarc_domain = f"_dmarc.{domain}"
-        records = dns.resolver.resolve(dmarc_domain, "TXT")
-        for r in records:
-            if "v=DMARC1" in r.to_text():
-                return True
-        return False
-    except Exception:
-        return False
+
+def check_dkim_record(domain: str, msg_raw:str):
+
+    dkim_record = None
+    dkim_content = get_dkim_content(msg_raw)
+    selector = get_dkim_selector(dkim_content)
+    dkim_domain = f"{selector}._domainkey.{domain}"
+    answer = dns.resolver.resolve(dkim_domain, "TXT")
+
+    for dkim in answer:
+        dkim_record = dkim.to_text()
+
+    clean_dkim_content = []
+
+    for clean in dkim_content:
+        clean_dkim_content.append(clean.lstrip(" \t"))
+
+    return True, dkim_record, clean_dkim_content
+
+
+def check_dmarc_record(domain: str):
+    dmarc_domain = f"_dmarc.{domain}"
+    records = dns.resolver.resolve(dmarc_domain, "TXT")
+
+    dmarc = None
+    for r in records:
+        dmarc = r.to_text()
+    return True, dmarc
+
 
 def check_rdns(ip: str) -> dict:
     reversed_ip = ".".join(ip.split(".")[::-1]) + ".in-addr.arpa"
