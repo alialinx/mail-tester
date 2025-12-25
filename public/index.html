@@ -287,6 +287,41 @@
     @media (max-width:680px){ .kv{ grid-template-columns:1fr; } }
     .k{ color:var(--muted); font-size:12px; }
     .v{ font-family:var(--mono); font-size:12px; overflow:auto; }
+
+    /* Right-side icons */
+    .statusBox{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-weight:950;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .icon{
+      width:26px;height:26px;border-radius:999px;
+      display:grid;place-items:center;
+      font-weight:950;
+      line-height:1;
+      user-select:none;
+      border:1px solid var(--border);
+      background:#f8fafc;
+      color:var(--muted);
+    }
+    .icon.good{ border-color:var(--goodBd); background:var(--goodBg); color:#166534; }
+    .icon.warn{ border-color:var(--warnBd); background:var(--warnBg); color:#92400e; }
+    .icon.bad{  border-color:var(--badBd);  background:var(--badBg);  color:#991b1b; }
+
+    .textBadge{
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#f8fafc;
+      color:var(--muted);
+    }
+    .textBadge.bad{ border-color:var(--badBd); background:var(--badBg); color:#991b1b; }
+    .textBadge.warn{ border-color:var(--warnBd); background:var(--warnBg); color:#92400e; }
+    .textBadge.good{ border-color:var(--goodBd); background:var(--goodBg); color:#166534; }
+
     .code{
       white-space:pre-wrap;
       font-family:var(--mono);
@@ -297,48 +332,6 @@
       padding:12px;
       overflow:auto;
       max-height:420px;
-    }
-
-    /* Right-side status: green tick for ok, missing text for missing */
-    .statusBox{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      font-weight:950;
-      font-size:12px;
-      white-space:nowrap;
-    }
-    .tick{
-      width:26px;height:26px;border-radius:999px;
-      display:grid;place-items:center;
-      border:1px solid var(--goodBd);
-      background:var(--goodBg);
-      color:#166534;
-      font-weight:950;
-      line-height:1;
-      user-select:none;
-    }
-    .statusText{
-      padding:7px 10px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:#f8fafc;
-      color:var(--muted);
-    }
-    .statusText.bad{
-      border-color:var(--badBd);
-      background:var(--badBg);
-      color:#991b1b;
-    }
-    .statusText.warn{
-      border-color:var(--warnBd);
-      background:var(--warnBg);
-      color:#92400e;
-    }
-    .statusText.neutral{
-      border-color:#e2e8f0;
-      background:#f8fafc;
-      color:#475569;
     }
 
     /* DNSBL chips */
@@ -428,7 +421,6 @@
             </div>
 
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-              <!-- LEGEND REMOVED -->
               <span class="pill neutral" id="pillStatus">status</span>
               <span class="pill neutral" id="pillSA">SpamAssassin: n/a</span>
             </div>
@@ -509,7 +501,6 @@
   </div>
 
 <script>
-  // index.html nerede olursa olsun API root'tan çağrılsın.
   const API_BASE = new URL("/api", location.origin).toString();
 
   let currentTo = null;
@@ -630,7 +621,7 @@
       (status === "error" || status === "expired") ? "bad" : "neutral"
     );
 
-    const sa = result?.checks?.spamassassin || result?.spamassassin || null;
+    const sa = result?.checks?.spamassassin || {};
     let saText = "SpamAssassin: n/a";
     let saKind = "neutral";
 
@@ -701,14 +692,18 @@
     }
   }
 
+  // Status mapping:
+  // - ok -> good
+  // - warning -> warn
+  // - missing -> bad
+  // - skipped/unknown -> TREAT AS MISSING (user request)
   function verdictFromStatus(status) {
     const s = String(status || "").toLowerCase().trim();
-    if (["ok","pass","passed","true","exists","found","present","valid"].includes(s)) return { kind:"good", text:"Pass" };
-    if (["missing","fail","failed","false","invalid","not_found","notfound"].includes(s)) return { kind:"bad", text:"Missing" };
+    if (["ok","pass","passed","true","exists","found","present","valid"].includes(s)) return { kind:"good", text:"Succeeded" };
     if (["warning","warn"].includes(s)) return { kind:"warn", text:"Warning" };
-    if (["skipped"].includes(s)) return { kind:"neutral", text:"Skipped" };
-    if (["unknown"].includes(s)) return { kind:"neutral", text:"Unknown" };
-    return { kind:"neutral", text:"Unknown" };
+    if (["missing","fail","failed","false","invalid","not_found","notfound"].includes(s)) return { kind:"bad", text:"Missing" };
+    if (["skipped","unknown",""].includes(s)) return { kind:"bad", text:"Missing" }; // forced
+    return { kind:"bad", text:"Missing" };
   }
 
   function asRecordText(v) {
@@ -718,22 +713,15 @@
     return String(v);
   }
 
-  // Right-side badge behavior:
-  // - ok => green tick only (tooltip "Succeeded")
-  // - missing => text "Missing" (tooltip "Missing")
-  // - warning => text "Warning"
-  // - skipped/unknown => text "Skipped/Unknown"
-  function renderRightStatus(verdict){
+  function renderRightBadge(verdict){
     if (verdict.kind === "good") {
-      return `<span class="statusBox" title="Succeeded"><span class="tick">✓</span></span>`;
-    }
-    if (verdict.kind === "bad") {
-      return `<span class="statusBox" title="Missing"><span class="statusText bad">Missing</span></span>`;
+      return `<span class="statusBox" title="Succeeded"><span class="icon good">✓</span></span>`;
     }
     if (verdict.kind === "warn") {
-      return `<span class="statusBox" title="Warning"><span class="statusText warn">Warning</span></span>`;
+      return `<span class="statusBox" title="Warning"><span class="icon warn">!</span></span>`;
     }
-    return `<span class="statusBox" title="${escapeHtml(verdict.text)}"><span class="statusText neutral">${escapeHtml(verdict.text)}</span></span>`;
+    // missing
+    return `<span class="statusBox" title="Missing"><span class="icon bad">✕</span></span>`;
   }
 
   function renderCheckCard({name, hint, verdict, kv}) {
@@ -751,7 +739,7 @@
           <div class="checkHint">${escapeHtml(hint)}</div>
           ${kvHtml ? `<div class="kv">${kvHtml}</div>` : ``}
         </div>
-        ${renderRightStatus(verdict)}
+        ${renderRightBadge(verdict)}
       </div>
     `;
   }
@@ -816,11 +804,10 @@
       ]
     }));
 
-    // rDNS: your backend now sends rdns.status ("ok"/"missing"/"unknown") and rdns.success/hostname
     blocks.push(renderCheckCard({
       name: "rDNS",
       hint: "Reverse DNS / PTR record for sender IP",
-      verdict: verdictFromStatus(rdns.status || (rdns.skipped ? "skipped" : "unknown")),
+      verdict: verdictFromStatus(rdns.status),
       kv: [
         ["Sender IP", senderIp.value || result?.meta?.sender_ip || ""],
         ["Hostname", rdns.hostname || ""],
@@ -840,8 +827,17 @@
     const bl = checks.blacklists || null;
     const res = bl?.results || null;
 
+    // If no results at all -> PASS (green) + message
     if (!res || typeof res !== "object" || Object.keys(res).length === 0) {
-      host.innerHTML = `<div class="emptyState">(no DNSBL details)</div>`;
+      host.innerHTML = `
+        <div class="checkRow" style="margin-bottom:0;">
+          <div style="min-width:0;flex:1 1 auto;">
+            <div class="checkName">DNSBL</div>
+            <div class="checkHint">No DNSBL listings detected.</div>
+          </div>
+          <span class="statusBox" title="Succeeded"><span class="icon good">✓</span></span>
+        </div>
+      `;
       return;
     }
 
@@ -853,7 +849,22 @@
       else err.push(name);
     }
 
+    // Summary line: pass if no listed
+    const isPass = listed.length === 0;
+    const summary = `
+      <div class="checkRow" style="margin-bottom:10px;">
+        <div style="min-width:0;flex:1 1 auto;">
+          <div class="checkName">DNSBL summary</div>
+          <div class="checkHint">${isPass ? "No listings found." : "One or more DNSBL listings detected."}</div>
+        </div>
+        <span class="statusBox" title="${isPass ? "Succeeded" : "Missing"}">
+          <span class="icon ${isPass ? "good" : "bad"}">${isPass ? "✓" : "✕"}</span>
+        </span>
+      </div>
+    `;
+
     function section(title, arr, kind) {
+      if (!arr.length) return "";
       return `
         <div class="dnsSection">
           <div class="dnsTitle">${escapeHtml(title)} <span class="dnsCount">${arr.length}</span></div>
@@ -864,13 +875,12 @@
       `;
     }
 
-    const parts = [];
-    if (listed.length) parts.push(section("Listed on", listed, "bad"));
-    if (notListed.length) parts.push(section("Not listed on", notListed, "good"));
-    if (timeout.length) parts.push(section("Timeout", timeout, "warn"));
-    if (err.length) parts.push(section("Other errors", err, "warn"));
-
-    host.innerHTML = parts.join("") || `<div class="emptyState">(no DNSBL results)</div>`;
+    host.innerHTML =
+      summary +
+      section("Listed on", listed, "bad") +
+      section("Not listed on", notListed, "good") +
+      section("Timeout", timeout, "warn") +
+      section("Other errors", err, "warn");
   }
 
   function renderSpamAssassin(result) {
