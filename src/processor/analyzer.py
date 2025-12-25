@@ -90,7 +90,7 @@ class Analyzer:
 
             listed_on = [k for k, v in bl.get("results", {}).items() if v == "listed"]
             if listed_on:
-                self.score.minus(2.0,"IP is listed in blacklists: " + ", ".join(listed_on),code="DNSBL_LISTED",severity="high",details=f"Listed on: {', '.join(listed_on)}",how_to_fix="Request delisting from the DNSBL provider(s) or change sending IP.",)
+                self.score.minus(0.5,"IP is listed in blacklists: " + ", ".join(listed_on),code="DNSBL_LISTED",severity="high",details=f"Listed on: {', '.join(listed_on)}",how_to_fix="Request delisting from the DNSBL provider(s) or change sending IP.",)
         else:
             checks["rdns"] = {"success": False, "hostname": None, "skipped": True}
             checks["blacklists"] = {"checked": 0, "results": {}, "summary": {}, "skipped": True}
