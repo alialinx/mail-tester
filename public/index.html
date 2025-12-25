@@ -13,7 +13,6 @@
       --muted:#5b6b84;
       --border:#e6ebf4;
       --shadow: 0 18px 46px rgba(11,18,32,.10);
-      --r:16px;
       --r2:22px;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
@@ -179,6 +178,8 @@
     .scoreSub{ font-size:11px; color:var(--muted); margin-top:4px; }
     .scoreText .title{ font-weight:950; font-size:16px; margin:0; }
     .scoreText .desc{ color:var(--muted); font-size:13px; margin-top:4px; line-height:1.45; }
+
+    /* Pills */
     .pill{
       display:inline-flex; align-items:center; gap:8px;
       padding:7px 10px; border-radius:999px;
@@ -190,11 +191,6 @@
     .pill.warn{ color:#92400e; border-color:var(--warnBd); background:var(--warnBg); }
     .pill.bad{ color:#991b1b; border-color:var(--badBd); background:var(--badBg); }
     .pill.neutral{ color:#475569; border-color:#e2e8f0; background:#f8fafc; }
-    .legend{
-      font-size:12px; color:var(--muted);
-      background:#fff; border:1px solid var(--border);
-      padding:8px 10px; border-radius:999px; white-space:nowrap;
-    }
 
     details{
       border:1px solid var(--border);
@@ -227,6 +223,7 @@
     details[open] .chev{ transform: rotate(90deg); }
     .sectionBody{ margin-top:10px; color:var(--text); }
 
+    /* Issues */
     .issues{ display:flex; flex-direction:column; gap:10px; }
     .issueRow{
       border:1px solid var(--border);
@@ -266,6 +263,7 @@
       line-height:1.55;
     }
 
+    /* Checks */
     .checkRow{
       display:flex;
       align-items:flex-start;
@@ -277,7 +275,13 @@
       background:#fff;
       margin-bottom:10px;
     }
-    .checkName{ font-weight:950; font-size:13px; display:flex; align-items:center; gap:8px; }
+    .checkName{
+      font-weight:950;
+      font-size:13px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
     .checkHint{ margin-top:4px; font-size:12px; color:var(--muted); line-height:1.45; }
     .kv{ display:grid; grid-template-columns: 140px 1fr; gap:8px; margin-top:8px; }
     @media (max-width:680px){ .kv{ grid-template-columns:1fr; } }
@@ -295,6 +299,49 @@
       max-height:420px;
     }
 
+    /* Right-side status: green tick for ok, missing text for missing */
+    .statusBox{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-weight:950;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .tick{
+      width:26px;height:26px;border-radius:999px;
+      display:grid;place-items:center;
+      border:1px solid var(--goodBd);
+      background:var(--goodBg);
+      color:#166534;
+      font-weight:950;
+      line-height:1;
+      user-select:none;
+    }
+    .statusText{
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#f8fafc;
+      color:var(--muted);
+    }
+    .statusText.bad{
+      border-color:var(--badBd);
+      background:var(--badBg);
+      color:#991b1b;
+    }
+    .statusText.warn{
+      border-color:var(--warnBd);
+      background:var(--warnBg);
+      color:#92400e;
+    }
+    .statusText.neutral{
+      border-color:#e2e8f0;
+      background:#f8fafc;
+      color:#475569;
+    }
+
+    /* DNSBL chips */
     .dnsSection{ margin-top:10px; }
     .dnsTitle{ display:flex; align-items:center; gap:8px; font-weight:950; font-size:13px; margin-bottom:8px; }
     .dnsCount{
@@ -381,7 +428,7 @@
             </div>
 
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-              <span class="legend">Legend: ≥ 8 green • 6–7.9 yellow • &lt; 6 red</span>
+              <!-- LEGEND REMOVED -->
               <span class="pill neutral" id="pillStatus">status</span>
               <span class="pill neutral" id="pillSA">SpamAssassin: n/a</span>
             </div>
@@ -462,7 +509,7 @@
   </div>
 
 <script>
-  // IMPORTANT: index.html nerede olursa olsun API root'tan çağrılsın.
+  // index.html nerede olursa olsun API root'tan çağrılsın.
   const API_BASE = new URL("/api", location.origin).toString();
 
   let currentTo = null;
@@ -529,14 +576,7 @@
   function formatSaScore(score) {
     const n = Number(score);
     if (!isFinite(n)) return "—";
-    return `${Math.abs(n).toFixed(1)}`; // negatif kafa karıştırmasın
-  }
-
-  function impactLabel(value) {
-    const v = Math.abs(Number(value || 0));
-    if (v >= 2) return "High";
-    if (v >= 0.8) return "Medium";
-    return "Low";
+    return `${Math.abs(n).toFixed(1)}`;
   }
 
   function normalizeIssues(result) {
@@ -546,6 +586,13 @@
     if (b) return b;
     const c = Array.isArray(result?.summary?.top_issues) ? result.summary.top_issues : null;
     return c || [];
+  }
+
+  function impactLabel(value) {
+    const v = Math.abs(Number(value || 0));
+    if (v >= 2) return "High";
+    if (v >= 0.8) return "Medium";
+    return "Low";
   }
 
   function getIssueFields(it) {
@@ -656,12 +703,12 @@
 
   function verdictFromStatus(status) {
     const s = String(status || "").toLowerCase().trim();
-    if (!s) return { kind:"neutral", text:"Unknown" };
     if (["ok","pass","passed","true","exists","found","present","valid"].includes(s)) return { kind:"good", text:"Pass" };
     if (["missing","fail","failed","false","invalid","not_found","notfound"].includes(s)) return { kind:"bad", text:"Missing" };
     if (["warning","warn"].includes(s)) return { kind:"warn", text:"Warning" };
     if (["skipped"].includes(s)) return { kind:"neutral", text:"Skipped" };
-    return { kind:"neutral", text: status };
+    if (["unknown"].includes(s)) return { kind:"neutral", text:"Unknown" };
+    return { kind:"neutral", text:"Unknown" };
   }
 
   function asRecordText(v) {
@@ -671,11 +718,31 @@
     return String(v);
   }
 
+  // Right-side badge behavior:
+  // - ok => green tick only (tooltip "Succeeded")
+  // - missing => text "Missing" (tooltip "Missing")
+  // - warning => text "Warning"
+  // - skipped/unknown => text "Skipped/Unknown"
+  function renderRightStatus(verdict){
+    if (verdict.kind === "good") {
+      return `<span class="statusBox" title="Succeeded"><span class="tick">✓</span></span>`;
+    }
+    if (verdict.kind === "bad") {
+      return `<span class="statusBox" title="Missing"><span class="statusText bad">Missing</span></span>`;
+    }
+    if (verdict.kind === "warn") {
+      return `<span class="statusBox" title="Warning"><span class="statusText warn">Warning</span></span>`;
+    }
+    return `<span class="statusBox" title="${escapeHtml(verdict.text)}"><span class="statusText neutral">${escapeHtml(verdict.text)}</span></span>`;
+  }
+
   function renderCheckCard({name, hint, verdict, kv}) {
     const kvHtml = (kv || [])
       .filter(([k,v]) => String(v || "").trim() !== "")
-      .map(([k,v]) => `<div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(String(v))}</div>`)
-      .join("");
+      .map(([k,v]) => `
+        <div class="k">${escapeHtml(k)}</div>
+        <div class="v">${escapeHtml(String(v))}</div>
+      `).join("");
 
     return `
       <div class="checkRow">
@@ -684,7 +751,7 @@
           <div class="checkHint">${escapeHtml(hint)}</div>
           ${kvHtml ? `<div class="kv">${kvHtml}</div>` : ``}
         </div>
-        <span class="pill ${verdict.kind}">${escapeHtml(verdict.text)}</span>
+        ${renderRightStatus(verdict)}
       </div>
     `;
   }
@@ -709,7 +776,7 @@
       verdict: verdictFromStatus(spf.status),
       kv: [
         ["Domain", spf.domain || result?.meta?.sender_domain || ""],
-        ["Record", asRecordText(spf.record || spf.value || spf.txt || spf.spf_record)]
+        ["Record", asRecordText(spf.record)]
       ]
     }));
 
@@ -719,8 +786,8 @@
       verdict: verdictFromStatus(dkim.status),
       kv: [
         ["Domain", dkim.domain || result?.meta?.sender_domain || ""],
-        ["Record", asRecordText(dkim.record || dkim.txt || dkim.dkim_record)],
-        ["DKIM content", asRecordText(dkim.dkim_content || dkim.signature || dkim.signed_headers)]
+        ["Record", asRecordText(dkim.record)],
+        ["DKIM content", asRecordText(dkim.dkim_content)]
       ]
     }));
 
@@ -730,7 +797,7 @@
       verdict: verdictFromStatus(dmarc.status),
       kv: [
         ["Domain", dmarc.domain || result?.meta?.sender_domain || ""],
-        ["Record", asRecordText(dmarc.record || dmarc.txt || dmarc.dmarc_record)]
+        ["Record", asRecordText(dmarc.record)]
       ]
     }));
 
@@ -749,13 +816,15 @@
       ]
     }));
 
+    // rDNS: your backend now sends rdns.status ("ok"/"missing"/"unknown") and rdns.success/hostname
     blocks.push(renderCheckCard({
       name: "rDNS",
       hint: "Reverse DNS / PTR record for sender IP",
-      verdict: verdictFromStatus(rdns.success === true ? "ok" : (rdns.skipped ? "skipped" : "missing")),
+      verdict: verdictFromStatus(rdns.status || (rdns.skipped ? "skipped" : "unknown")),
       kv: [
         ["Sender IP", senderIp.value || result?.meta?.sender_ip || ""],
-        ["Hostname", rdns.hostname || rdns.ptr || ""],
+        ["Hostname", rdns.hostname || ""],
+        ["Success", (rdns.success === null || rdns.success === undefined) ? "" : String(rdns.success)],
         ["Skipped", rdns.skipped ? "true" : "false"]
       ]
     }));
@@ -768,7 +837,7 @@
     host.innerHTML = "";
 
     const checks = result.checks || {};
-    const bl = checks.blacklists || checks.dnsbl || null;
+    const bl = checks.blacklists || null;
     const res = bl?.results || null;
 
     if (!res || typeof res !== "object" || Object.keys(res).length === 0) {
@@ -805,7 +874,7 @@
   }
 
   function renderSpamAssassin(result) {
-    const sa = result?.checks?.spamassassin || result?.spamassassin || {};
+    const sa = result?.checks?.spamassassin || {};
     const report = (sa.report || "").trim();
     $("saReport").textContent = report ? report : "(no report)";
 
@@ -843,11 +912,6 @@
       r.message_raw ||
       r.raw ||
       r.eml ||
-      r.email_raw ||
-      r.mail_raw ||
-      r?.mail?.raw ||
-      r?.email?.raw ||
-      r?.email?.source ||
       payload?.raw_email ||
       payload?.message_raw ||
       payload?.raw ||
@@ -985,7 +1049,7 @@
 
   $("btnCheck").addEventListener("click", async () => {
     if (!currentTo) return;
-    hideReport(); // check'e basınca alan açılmasın
+    hideReport();
 
     const localRunId = runId;
 
