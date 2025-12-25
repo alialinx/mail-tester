@@ -8,19 +8,16 @@
   <style>
     :root{
       --bg:#0b1020;
-      --card:#121a33;
-      --card2:#0f1730;
       --text:#e9ecf5;
       --muted:#a9b2cc;
       --border:rgba(255,255,255,.08);
       --ok:#2ecc71;
-      --fail:#e74c3c;   /* missing için de bunu kullanıyoruz */
+      --fail:#e74c3c;   /* missing */
       --unk:#95a5a6;
       --warn:#f1c40f;
       --shadow: 0 12px 30px rgba(0,0,0,.35);
       --radius:16px;
     }
-
     *{box-sizing:border-box}
     body{
       margin:0;
@@ -31,7 +28,6 @@
         var(--bg);
       color:var(--text);
     }
-
     .container{max-width:1100px;margin:40px auto;padding:0 16px}
     .header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
     .title{font-size:26px;font-weight:750;letter-spacing:.2px}
@@ -43,7 +39,6 @@
       padding:16px;
       box-shadow: var(--shadow);
     }
-
     .grid{display:grid;grid-template-columns: 1.2fr .8fr;gap:14px}
     @media (max-width: 920px){ .grid{grid-template-columns:1fr} }
 
@@ -64,10 +59,8 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       font-size:12.5px;
     }
-
     .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     @media (max-width: 520px){ .row{grid-template-columns:1fr} }
-
     .actions{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
     button{
       border:0;
@@ -87,7 +80,6 @@
     button:disabled{opacity:.55;cursor:not-allowed}
     .hint{color:var(--muted);font-size:12px}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
-
     .toast{
       margin-top:10px;
       padding:10px 12px;
@@ -164,7 +156,7 @@
     .issue-how{margin-top:6px;color:var(--muted)}
     .issue-code{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 11.5px}
 
-    /* Status icons (ok / missing / unknown) */
+    /* Status icons */
     .status-icon{font-size:16px;cursor:help;user-select:none}
     .status-icon.ok{color:var(--ok)}
     .status-icon.missing{color:var(--fail)}
@@ -175,6 +167,24 @@
     .kv div:nth-child(odd){color:var(--muted)}
     .kv div:nth-child(even){color:var(--text)}
     .small{font-size:12px;color:var(--muted)}
+
+    /* Message details (body) */
+    .body-box{
+      margin-top:10px;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background: rgba(0,0,0,.14);
+    }
+    .body-title{font-weight:700;color:var(--text);margin-bottom:8px}
+    .body-pre{
+      white-space:pre-wrap;
+      word-break:break-word;
+      margin:0;
+      font-size:12.5px;
+      line-height:1.5;
+      color:var(--text);
+    }
 
     /* SpamAssassin */
     .sa-title{font-weight:750;margin:2px 0 6px;color:var(--text)}
@@ -221,7 +231,6 @@
 
     <div class="panel">
       <div class="grid">
-        <!-- LEFT: raw email -->
         <div>
           <label for="rawEmail">Raw Email</label>
           <textarea id="rawEmail" class="mono" placeholder="E-postanın raw içeriğini buraya yapıştır..."></textarea>
@@ -235,13 +244,12 @@
           <div id="toast" class="toast"></div>
         </div>
 
-        <!-- RIGHT: inputs -->
         <div>
           <div class="row">
             <div>
               <label for="domain">Domain</label>
               <input id="domain" placeholder="ör: example.com" />
-              <div class="small">Not: DKIM/DMARC/SPF kontrolleri bu domain üzerinden yapılır.</div>
+              <div class="small">DKIM/DMARC/SPF kontrolleri bu domain üzerinden yapılır.</div>
             </div>
             <div>
               <label for="senderIp">Sender IP (opsiyonel)</label>
@@ -253,9 +261,7 @@
           <div style="margin-top:12px">
             <label for="apiUrl">API Endpoint</label>
             <input id="apiUrl" class="mono" value="/analyze" />
-            <div class="small">
-              Backend endpoint’in farklıysa burayı değiştir. (Örn: <span class="mono">/api/analyze</span>)
-            </div>
+            <div class="small">Backend endpoint’in farklıysa burayı değiştir.</div>
           </div>
 
           <div class="footer-note">
@@ -265,14 +271,12 @@
       </div>
     </div>
 
-    <!-- RESULTS -->
     <div id="results" class="results">
       <div id="cards" class="cards"></div>
     </div>
   </div>
 
   <script>
-    // ---------- Utilities ----------
     function escapeHtml(str) {
       return String(str ?? "")
         .replaceAll("&", "&amp;")
@@ -293,7 +297,6 @@
     }
 
     function renderStatusIcon(status) {
-      // status: ok / missing / unknown / warning
       if (status === "ok") return `<span class="status-icon ok" title="Succeeded">✔</span>`;
       if (status === "missing") return `<span class="status-icon missing" title="Failed">✖</span>`;
       if (status === "warning") return `<span class="status-icon warning" title="Warning">⚠</span>`;
@@ -307,6 +310,8 @@
       return "Unknown";
     }
 
+    function safeArray(v) { return Array.isArray(v) ? v : []; }
+
     function formatScore(score, denom = 5) {
       const s = (typeof score === "number") ? score : 0;
       return `
@@ -317,96 +322,81 @@
       `;
     }
 
-    function safeArray(v) { return Array.isArray(v) ? v : []; }
-
-    // ---------- SpamAssassin Friendly Text ----------
-    function formatSaMessage(sa) {
-      const score = (sa && typeof sa.score === "number") ? sa.score : null;
-      const thr   = (sa && typeof sa.threshold === "number") ? sa.threshold : null;
-
-      if (!sa || sa.status === "error") {
-        return {
-          status: "unknown",
-          title: "SpamAssassin değerlendirmesi alınamadı",
-          text: "SpamAssassin servisine erişilemediği için bu kontrol atlandı. Diğer kontroller sonuç vermeye devam eder.",
-          hint: sa?.error ? `Hata: ${sa.error}` : null,
-          showRules: false
-        };
-      }
-
-      if (sa.is_spam === false) {
-        return {
-          status: "ok",
-          title: "SpamAssassin mesajınızı olumlu değerlendirdi",
-          text: `Mesaj, SpamAssassin kurallarına göre spam görünmüyor. Skorunuz ${score} / ${thr}.`,
-          hint: "Bu iyi bir sinyal; inbox placement yine de SPF/DKIM/DMARC, itibar ve içerik faktörlerine bağlıdır.",
-          showRules: true
-        };
-      }
-
-      if (sa.is_spam === true) {
-        return {
-          status: "missing", // fail yerine missing kullanıyoruz
-          title: "SpamAssassin mesajınızı riskli buldu",
-          text: `Mesaj spam olarak işaretlenebilir. Skorunuz ${score} / ${thr}. İçeriği ve gönderim ayarlarını iyileştirmek faydalı olur.`,
-          hint: "Aşağıdaki kurallar hangi noktaların risk oluşturduğunu gösterir.",
-          showRules: true
-        };
-      }
-
-      return {
-        status: "unknown",
-        title: "SpamAssassin sonucu net değil",
-        text: "SpamAssassin yanıtı alındı ancak spam değerlendirmesi üretilemedi.",
-        hint: null,
-        showRules: false
-      };
-    }
-
-    function renderSpamAssassinCard(sa) {
-      const fm = formatSaMessage(sa);
-      const rules = safeArray(sa?.rules);
-
-      let rulesHtml = "";
-      if (fm.showRules && rules.length > 0) {
-        rulesHtml = `
-          <div class="sa-rules">
-            <div class="sa-rules-title">Detaylar</div>
-            <div class="sa-rules-list">
-              ${rules.map(r => `
-                <div class="sa-rule">
-                  <div class="sa-rule-left">
-                    <span class="sa-rule-points">${escapeHtml(r.points)}</span>
-                    <span class="sa-rule-name">${escapeHtml(r.name)}</span>
-                  </div>
-                  <div class="sa-rule-desc">${escapeHtml(r.description || "")}</div>
-                </div>
-              `).join("")}
-            </div>
-          </div>
-        `;
-      }
+    function renderSummaryBlock(result) {
+      const sum = result?.summary || {};
+      const issues = safeArray(sum?.top_issues);
+      const score = result?.score ?? sum?.score ?? 0;
 
       return `
-        <div class="card">
-          <div class="card-head">
-            <div class="card-title">SpamAssassin</div>
-            ${renderStatusIcon(fm.status)}
+        <div class="summary">
+          <div class="summary-top">
+            <div>
+              <div class="badge">${escapeHtml(sum.grade || "Result")}</div>
+              <div style="margin-top:10px;font-size:16px;font-weight:800;color:var(--text)">
+                ${escapeHtml(sum.headline || "Deliverability summary")}
+              </div>
+              <div class="small" style="margin-top:6px">
+                Bu özet, kontrollerin birleşik skoruna göre oluşturulur.
+              </div>
+            </div>
+            ${formatScore(typeof score === "number" ? score : 0, 5)}
           </div>
-          <div class="card-body">
-            <div class="sa-title">${escapeHtml(fm.title)}</div>
-            <div class="sa-text">${escapeHtml(fm.text)}</div>
-            ${fm.hint ? `<div class="sa-hint">${escapeHtml(fm.hint)}</div>` : ""}
+
+          <div class="issues">
+            ${issues.length ? issues.map(it => `
+              <div class="issue">
+                <div class="issue-top">
+                  <div class="issue-title">${escapeHtml(it.title || it.message || "Issue")}</div>
+                  <div class="issue-meta">
+                    <span class="issue-code">${escapeHtml(it.code || "")}</span>
+                    ${it.severity ? ` • ${escapeHtml(it.severity)}` : ""}
+                    ${typeof it.points === "number" ? ` • ${escapeHtml(it.points)} pts` : ""}
+                  </div>
+                </div>
+                ${it.how_to_fix ? `<div class="issue-how">${escapeHtml(it.how_to_fix)}</div>` : ""}
+                ${it.details ? `<div class="issue-how"><span class="small">Details:</span> ${escapeHtml(it.details)}</div>` : ""}
+              </div>
+            `).join("") : `<div class="small">Öne çıkan problem yok.</div>`}
           </div>
-          ${rulesHtml}
         </div>
       `;
     }
 
-    // ---------- Cards ----------
-    function renderDnsCard(label, key, obj) {
-      const status = obj?.status || (obj?.success === true ? "ok" : obj?.success === false ? "missing" : "unknown");
+    /* Meta + body (Message Details) */
+    function renderMetaCard(meta) {
+      const body = meta?.body; // backend'e ekledin
+      const hasBody = !!(body && String(body).trim());
 
+      return `
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Message Details</div>
+            ${renderStatusIcon("ok")}
+          </div>
+          <div class="card-body">
+            <div class="kv">
+              <div>From</div><div class="mono">${escapeHtml(meta?.from || "")}</div>
+              <div>To</div><div class="mono">${escapeHtml(meta?.to || "")}</div>
+              <div>Subject</div><div class="mono">${escapeHtml(meta?.subject || "")}</div>
+              <div>Message-ID</div><div class="mono">${escapeHtml(meta?.message_id || "")}</div>
+              <div>Sender domain</div><div class="mono">${escapeHtml(meta?.sender_domain || "")}</div>
+              <div>Sender IP</div><div class="mono">${escapeHtml(meta?.sender_ip || "")}</div>
+            </div>
+
+            <div class="body-box">
+              <div class="body-title">Body</div>
+              ${hasBody
+                ? `<pre class="body-pre">${escapeHtml(body)}</pre>`
+                : `<div class="small">Body bilgisi backend tarafından dönmedi (meta.body boş veya None).</div>`
+              }
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDnsCard(label, obj) {
+      const status = obj?.status || (obj?.success === true ? "ok" : obj?.success === false ? "missing" : "unknown");
       const record = obj?.record;
       const recordText = Array.isArray(record)
         ? record.map(x => `<div class="mono">${escapeHtml(x)}</div>`).join("")
@@ -491,7 +481,6 @@
     }
 
     function renderRdnsCard(rdnsObj) {
-      // Analyzer: ok / missing / unknown + skipped flag
       const status = rdnsObj?.status || (rdnsObj?.skipped ? "unknown" : (rdnsObj?.success ? "ok" : "missing"));
       const hostname = rdnsObj?.hostname ?? null;
       const skipped = !!rdnsObj?.skipped;
@@ -515,7 +504,6 @@
     }
 
     function renderBlacklistCard(blObj) {
-      // Eğer Analyzer tarafında status eklemediysen yine de çalışır.
       const skipped = !!blObj?.skipped;
       const status = blObj?.status || (skipped ? "unknown" : "ok");
 
@@ -573,63 +561,85 @@
       `;
     }
 
-    function renderSummaryBlock(result) {
-      const sum = result?.summary || {};
-      const issues = safeArray(sum?.top_issues);
-      const score = result?.score ?? sum?.score ?? 0;
+    function formatSaMessage(sa) {
+      const score = (sa && typeof sa.score === "number") ? sa.score : null;
+      const thr   = (sa && typeof sa.threshold === "number") ? sa.threshold : null;
 
-      return `
-        <div class="summary">
-          <div class="summary-top">
-            <div>
-              <div class="badge">${escapeHtml(sum.grade || "Result")}</div>
-              <div style="margin-top:10px;font-size:16px;font-weight:800;color:var(--text)">
-                ${escapeHtml(sum.headline || "Deliverability summary")}
-              </div>
-              <div class="small" style="margin-top:6px">
-                Bu özet, kontrollerin birleşik skoruna göre oluşturulur.
-              </div>
-            </div>
-            ${formatScore(typeof score === "number" ? score : 0, 5)}
-          </div>
+      if (!sa || sa.status === "error") {
+        return {
+          status: "unknown",
+          title: "SpamAssassin değerlendirmesi alınamadı",
+          text: "SpamAssassin servisine erişilemediği için bu kontrol atlandı. Diğer kontroller sonuç vermeye devam eder.",
+          hint: sa?.error ? `Hata: ${sa.error}` : null,
+          showRules: false
+        };
+      }
 
-          <div class="issues">
-            ${issues.length ? issues.map(it => `
-              <div class="issue">
-                <div class="issue-top">
-                  <div class="issue-title">${escapeHtml(it.title || it.message || "Issue")}</div>
-                  <div class="issue-meta">
-                    <span class="issue-code">${escapeHtml(it.code || "")}</span>
-                    ${it.severity ? ` • ${escapeHtml(it.severity)}` : ""}
-                    ${typeof it.points === "number" ? ` • ${escapeHtml(it.points)} pts` : ""}
-                  </div>
-                </div>
-                ${it.how_to_fix ? `<div class="issue-how">${escapeHtml(it.how_to_fix)}</div>` : ""}
-                ${it.details ? `<div class="issue-how"><span class="small">Details:</span> ${escapeHtml(it.details)}</div>` : ""}
-              </div>
-            `).join("") : `<div class="small">Öne çıkan problem yok.</div>`}
-          </div>
-        </div>
-      `;
+      if (sa.is_spam === false) {
+        return {
+          status: "ok",
+          title: "SpamAssassin mesajınızı olumlu değerlendirdi",
+          text: `Mesaj, SpamAssassin kurallarına göre spam görünmüyor. Skorunuz ${score} / ${thr}.`,
+          hint: "Bu iyi bir sinyal; inbox placement yine de SPF/DKIM/DMARC, itibar ve içerik faktörlerine bağlıdır.",
+          showRules: true
+        };
+      }
+
+      if (sa.is_spam === true) {
+        return {
+          status: "missing",
+          title: "SpamAssassin mesajınızı riskli buldu",
+          text: `Mesaj spam olarak işaretlenebilir. Skorunuz ${score} / ${thr}. İçeriği ve gönderim ayarlarını iyileştirmek faydalı olur.`,
+          hint: "Aşağıdaki kurallar hangi noktaların risk oluşturduğunu gösterir.",
+          showRules: true
+        };
+      }
+
+      return {
+        status: "unknown",
+        title: "SpamAssassin sonucu net değil",
+        text: "SpamAssassin yanıtı alındı ancak spam değerlendirmesi üretilemedi.",
+        hint: null,
+        showRules: false
+      };
     }
 
-    function renderMetaCard(meta) {
+    function renderSpamAssassinCard(sa) {
+      const fm = formatSaMessage(sa);
+      const rules = safeArray(sa?.rules);
+
+      let rulesHtml = "";
+      if (fm.showRules && rules.length > 0) {
+        rulesHtml = `
+          <div class="sa-rules">
+            <div class="sa-rules-title">Detaylar</div>
+            <div class="sa-rules-list">
+              ${rules.map(r => `
+                <div class="sa-rule">
+                  <div class="sa-rule-left">
+                    <span class="sa-rule-points">${escapeHtml(r.points)}</span>
+                    <span class="sa-rule-name">${escapeHtml(r.name)}</span>
+                  </div>
+                  <div class="sa-rule-desc">${escapeHtml(r.description || "")}</div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }
+
       return `
         <div class="card">
           <div class="card-head">
-            <div class="card-title">Meta</div>
-            ${renderStatusIcon("ok")}
+            <div class="card-title">SpamAssassin</div>
+            ${renderStatusIcon(fm.status)}
           </div>
           <div class="card-body">
-            <div class="kv">
-              <div>From</div><div class="mono">${escapeHtml(meta?.from || "")}</div>
-              <div>To</div><div class="mono">${escapeHtml(meta?.to || "")}</div>
-              <div>Subject</div><div class="mono">${escapeHtml(meta?.subject || "")}</div>
-              <div>Message-ID</div><div class="mono">${escapeHtml(meta?.message_id || "")}</div>
-              <div>Sender domain</div><div class="mono">${escapeHtml(meta?.sender_domain || "")}</div>
-              <div>Sender IP</div><div class="mono">${escapeHtml(meta?.sender_ip || "")}</div>
-            </div>
+            <div class="sa-title">${escapeHtml(fm.title)}</div>
+            <div class="sa-text">${escapeHtml(fm.text)}</div>
+            ${fm.hint ? `<div class="sa-hint">${escapeHtml(fm.hint)}</div>` : ""}
           </div>
+          ${rulesHtml}
         </div>
       `;
     }
@@ -639,10 +649,10 @@
 
       const html = [
         renderSummaryBlock(result),
-        renderMetaCard(result?.meta),
-        renderDnsCard("SPF", "spf", checks.spf),
-        renderDnsCard("DKIM", "dkim", checks.dkim),
-        renderDnsCard("DMARC", "dmarc", checks.dmarc),
+        renderMetaCard(result?.meta),           /* Message Details + Body */
+        renderDnsCard("SPF", checks.spf),
+        renderDnsCard("DKIM", checks.dkim),
+        renderDnsCard("DMARC", checks.dmarc),
         renderHeadersCard(checks.headers),
         renderSenderIpCard(checks.sender_ip),
         renderRdnsCard(checks.rdns),
@@ -653,7 +663,6 @@
       document.getElementById("cards").innerHTML = html;
     }
 
-    // ---------- Request ----------
     let lastRequestId = 0;
 
     async function doAnalyze() {
@@ -662,16 +671,9 @@
       const senderIp = document.getElementById("senderIp").value.trim();
       const apiUrl = document.getElementById("apiUrl").value.trim() || "/analyze";
 
-      if (!rawEmail) {
-        showToast("Raw email boş olamaz.", "error");
-        return;
-      }
-      if (!domain) {
-        showToast("Domain boş olamaz.", "error");
-        return;
-      }
+      if (!rawEmail) { showToast("Raw email boş olamaz.", "error"); return; }
+      if (!domain) { showToast("Domain boş olamaz.", "error"); return; }
 
-      // UI: sonuçları hemen kapat (eski sonucu göstermesin)
       const resultsEl = document.getElementById("results");
       resultsEl.classList.remove("show");
       document.getElementById("cards").innerHTML = "";
@@ -684,14 +686,8 @@
       const requestId = ++lastRequestId;
 
       try {
-        // Cache busting: querystring
         const url = apiUrl.includes("?") ? `${apiUrl}&_ts=${Date.now()}` : `${apiUrl}?_ts=${Date.now()}`;
-
-        const payload = {
-          domain: domain,
-          sender_ip: senderIp || null,
-          raw_email: rawEmail
-        };
+        const payload = { domain, sender_ip: senderIp || null, raw_email: rawEmail };
 
         const res = await fetch(url, {
           method: "POST",
@@ -701,8 +697,6 @@
         });
 
         const data = await res.json().catch(() => null);
-
-        // Eğer arada yeni istek atıldıysa eski sonucu basma
         if (requestId !== lastRequestId) return;
 
         if (!res.ok) {
@@ -710,13 +704,11 @@
           showToast(`Hata: ${msg}`, "error");
           return;
         }
-
         if (!data) {
           showToast("Sunucudan geçersiz yanıt alındı.", "error");
           return;
         }
 
-        // Render + show
         renderAll(data);
         resultsEl.classList.add("show");
         showToast("Kontrol tamamlandı.");
@@ -740,11 +732,9 @@
       showToast("Temizlendi.");
     }
 
-    // ---------- Events ----------
     document.getElementById("btnAnalyze").addEventListener("click", doAnalyze);
     document.getElementById("btnClear").addEventListener("click", clearAll);
 
-    // Ctrl+Enter to run
     document.getElementById("rawEmail").addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") doAnalyze();
     });
