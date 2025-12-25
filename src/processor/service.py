@@ -30,60 +30,66 @@ def get_dkim_content(msg_raw: str):
     msg_list = msg_raw.splitlines()
 
     record_list = []
-    bool = False
+    in_dkim = False
 
     for line in msg_list:
         if line == "":
             break
 
         if line.lower().startswith("dkim-signature:"):
-            bool=True
+            in_dkim = True
             record_list.append(line)
             continue
 
-        if bool and line.startswith("\t"):
+        if in_dkim and line.startswith(("\t", " ")):
             record_list.append(line)
             continue
 
-        if bool:
+        if in_dkim:
             break
 
-    if record_list:
-        return record_list
+    return record_list
 
 
 def get_dkim_selector(record_list: list):
+    if not record_list:
+        return None
 
-    clean_record_list= []
+    clean_record_list = [x.lstrip(" \t") for x in record_list]
+    joined = " ".join([x.strip() for x in clean_record_list])
 
-    for clean in record_list:
-        clean_record_list.append(clean.lstrip(" \t"))
-    selector = None
-
-    for s in clean_record_list:
-        if s.startswith("s="):
-            selector = s.split("s=", 1)[1].split(";", 1)[0]
-            break
-
-    return selector
+    m = re.search(r"(?:^|;)\s*s=([^;]+)", joined, flags=re.IGNORECASE)
+    return m.group(1).strip() if m else None
 
 
 
-def check_dkim_record(domain: str, msg_raw:str):
-
+def check_dkim_record(domain: str, msg_raw: str):
     dkim_record = None
+
     dkim_content = get_dkim_content(msg_raw)
+    clean_dkim_content = [x.lstrip(" \t") for x in dkim_content] if dkim_content else []
+
+
+    if not dkim_content:
+        return False, None, []
+
     selector = get_dkim_selector(dkim_content)
+
+    if not selector:
+        return False, None, clean_dkim_content
+
     dkim_domain = f"{selector}._domainkey.{domain}"
-    answer = dns.resolver.resolve(dkim_domain, "TXT")
+
+    try:
+        answer = dns.resolver.resolve(dkim_domain, "TXT")
+    except Exception:
+        return False, None, clean_dkim_content
 
     for dkim in answer:
         dkim_record = dkim.to_text()
 
-    clean_dkim_content = []
-
-    for clean in dkim_content:
-        clean_dkim_content.append(clean.lstrip(" \t"))
+    if not dkim_record:
+        return False, None, clean_dkim_content
 
     return True, dkim_record, clean_dkim_content
 
