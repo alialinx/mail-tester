@@ -120,17 +120,30 @@ class Analyzer:
             "subject": headers.get("Subject"),
             "from": headers.get("From"),
             "to": headers.get("To"),
-            "body": headers.get("Body"),
         }
 
-
+        body = ""
+        try:
+            if self.msg.is_multipart():
+                for part in self.msg.walk():
+                    ctype = part.get_content_type()
+                    disp = str(part.get("Content-Disposition") or "")
+                    if ctype == "text/plain" and "attachment" not in disp:
+                        payload = part.get_payload(decode=True) or b""
+                        body = payload.decode(part.get_content_charset() or "utf-8", errors="ignore")
+                        break
+            else:
+                payload = self.msg.get_payload(decode=True) or b""
+                body = payload.decode(self.msg.get_content_charset() or "utf-8", errors="ignore")
+        except Exception:
+            body = ""
 
         base = self.score.result()
-
+        meta["body"] = body
 
         base["meta"] = meta
         base["checks"] = checks
-
+        base["raw_email"] = self.msg.as_string()
 
 
         base["summary"] = {"score": base["score"],"grade": base["title"],"headline": base["description"],"top_issues": base.get("issues", [])[:3],}
