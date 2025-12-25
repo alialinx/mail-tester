@@ -1,697 +1,1078 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Mail Tester</title>
-  <style>
-    :root{
-      --bg1:#f6f8ff;
-      --bg2:#f7fbff;
-      --card:#ffffffcc;
-      --text:#0b1220;
-      --muted:#5b6b84;
-      --border:#e6ebf4;
-      --shadow: 0 18px 46px rgba(11,18,32,.10);
-      --r2:22px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Mail Tester</title>
+    <style>
+        :root {
+            --bg1: #f6f8ff;
+            --bg2: #f7fbff;
+            --card: #ffffffcc;
+            --text: #0b1220;
+            --muted: #5b6b84;
+            --border: #e6ebf4;
+            --shadow: 0 18px 46px rgba(11, 18, 32, .10);
+            --r2: 22px;
+            --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
 
-      --primary:#2b59ff;
-      --primary2:#2147d6;
+            --primary: #2b59ff;
+            --primary2: #2147d6;
 
-      --good:#16a34a;
-      --warn:#d97706;
-      --bad:#dc2626;
+            --good: #16a34a;
+            --warn: #d97706;
+            --bad: #dc2626;
 
-      --goodBg:#f0fdf4;
-      --warnBg:#fffbeb;
-      --badBg:#fef2f2;
+            --goodBg: #f0fdf4;
+            --warnBg: #fffbeb;
+            --badBg: #fef2f2;
 
-      --goodBd:#bbf7d0;
-      --warnBd:#fde68a;
-      --badBd:#fecaca;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:var(--sans);
-      color:var(--text);
-      background:
-        radial-gradient(1200px 700px at 35% -10%, rgba(43,89,255,.18), transparent 58%),
-        radial-gradient(900px 560px at 92% 10%, rgba(22,163,74,.08), transparent 58%),
-        radial-gradient(900px 560px at 8% 20%, rgba(217,119,6,.06), transparent 58%),
-        linear-gradient(180deg, var(--bg1), var(--bg2));
-      min-height:100vh;
-    }
-    .wrap{ max-width:980px; margin:0 auto; padding:34px 16px 70px; }
-    .header{ display:flex; align-items:flex-start; gap:14px; justify-content:center; margin-bottom:18px; }
-    .logo{
-      width:38px;height:38px;border-radius:12px;
-      background:linear-gradient(180deg,var(--primary),var(--primary2));
-      display:grid;place-items:center;color:#fff;
-      box-shadow:0 14px 30px rgba(43,89,255,.22);
-      flex:0 0 auto;
-    }
-    .titleBlock{ max-width:760px; }
-    h1{ margin:0; font-size:20px; font-weight:950; letter-spacing:.2px; }
-    .sub{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.6; }
+            --goodBd: #bbf7d0;
+            --warnBd: #fde68a;
+            --badBd: #fecaca;
+        }
 
-    .card{
-      background:var(--card);
-      backdrop-filter: blur(10px);
-      border:1px solid rgba(230,235,244,.95);
-      border-radius:var(--r2);
-      box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-    .cardHd{
-      padding:14px 16px;
-      border-bottom:1px solid rgba(230,235,244,.95);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      background:rgba(255,255,255,.65);
-    }
-    .cardHd .t{ font-weight:950; font-size:14px; }
-    .cardHd .s{ font-size:12px; color:var(--muted); white-space:nowrap; }
-    .cardBd{ padding:16px; }
+        * {
+            box-sizing: border-box
+        }
 
-    .row{ display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center; }
-    @media (max-width:840px){ .row{ grid-template-columns:1fr; } }
-    .input{
-      width:100%;
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:16px;
-      padding:13px 14px;
-      font-size:14px;
-      font-family:var(--mono);
-      outline:none;
-      box-shadow:0 12px 26px rgba(11,18,32,.06);
-    }
-    .btns{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
-    .btn{
-      border:1px solid var(--border);
-      background:#fff;
-      color:var(--text);
-      border-radius:16px;
-      padding:11px 13px;
-      font-weight:950;
-      cursor:pointer;
-      transition: transform .06s ease, box-shadow .15s ease, border-color .15s ease;
-    }
-    .btn:hover{ box-shadow:0 14px 30px rgba(11,18,32,.10); border-color:#d7dfef; }
-    .btn:active{ transform: translateY(1px); }
-    .btn.primary{
-      background:linear-gradient(180deg,var(--primary),var(--primary2));
-      border-color:transparent;
-      color:#fff;
-    }
-    .btn.primary:disabled{ opacity:.55; cursor:not-allowed; box-shadow:none; }
+        body {
+            margin: 0;
+            font-family: var(--sans);
+            color: var(--text);
+            background: radial-gradient(1200px 700px at 35% -10%, rgba(43, 89, 255, .18), transparent 58%),
+            radial-gradient(900px 560px at 92% 10%, rgba(22, 163, 74, .08), transparent 58%),
+            radial-gradient(900px 560px at 8% 20%, rgba(217, 119, 6, .06), transparent 58%),
+            linear-gradient(180deg, var(--bg1), var(--bg2));
+            min-height: 100vh;
+        }
 
-    .statusLine{
-      margin-top:10px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-    .statusLeft{ display:flex; align-items:center; gap:10px; color:var(--muted); font-size:13px; }
-    .dot{ width:10px;height:10px;border-radius:999px;background:#cbd5e1; }
-    .dot.good{ background:var(--good); }
-    .dot.warn{ background:var(--warn); }
-    .dot.bad{ background:var(--bad); }
+        .wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 34px 16px 70px;
+        }
 
-    .progressWrap{ display:none; align-items:center; gap:10px; min-width:260px; }
-    .spinner{
-      width:14px;height:14px;border-radius:999px;
-      border:2px solid rgba(43,89,255,.25);
-      border-top-color: rgba(43,89,255,1);
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg);} }
-    .bar{
-      flex:1 1 auto;
-      height:8px;
-      border-radius:999px;
-      background:#e9efff;
-      overflow:hidden;
-      border:1px solid #dbe4ff;
-    }
-    .bar > i{
-      display:block;
-      height:100%;
-      width:40%;
-      background:linear-gradient(90deg,var(--primary),rgba(43,89,255,.45));
-      animation: slide 1.0s ease-in-out infinite;
-    }
-    @keyframes slide{ 0%{ transform: translateX(-120%); } 100%{ transform: translateX(280%); } }
+        .header {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            justify-content: center;
+            margin-bottom: 18px;
+        }
 
-    #reportWrap{ display:none; margin-top:14px; }
+        .logo {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: linear-gradient(180deg, var(--primary), var(--primary2));
+            display: grid;
+            place-items: center;
+            color: #fff;
+            box-shadow: 0 14px 30px rgba(43, 89, 255, .22);
+            flex: 0 0 auto;
+        }
 
-    .scoreCard{
-      border:1px solid var(--border);
-      border-radius:18px;
-      background:#fff;
-      padding:14px;
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .scoreCard.good{ border-color:var(--goodBd); background:var(--goodBg); }
-    .scoreCard.warn{ border-color:var(--warnBd); background:var(--warnBg); }
-    .scoreCard.bad{ border-color:var(--badBd); background:var(--badBg); }
-    .scoreCard.neutral{ border-color:var(--border); background:#fff; }
+        .titleBlock {
+            max-width: 760px;
+        }
 
-    .scoreLeft{ display:flex; align-items:center; gap:12px; min-width:0; }
-    .scoreBox{
-      width:70px; height:70px; border-radius:18px;
-      background:#fff; border:1px solid var(--border);
-      display:grid; place-items:center; text-align:center;
-    }
-    .scoreN{ font-weight:950; font-size:20px; line-height:1; }
-    .scoreSub{ font-size:11px; color:var(--muted); margin-top:4px; }
-    .scoreText .title{ font-weight:950; font-size:16px; margin:0; }
-    .scoreText .desc{ color:var(--muted); font-size:13px; margin-top:4px; line-height:1.45; }
+        h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 950;
+            letter-spacing: .2px;
+        }
 
-    /* Pills */
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:7px 10px; border-radius:999px;
-      border:1px solid var(--border); background:#f8fafc;
-      font-size:12px; font-weight:950; color:var(--muted);
-      white-space:nowrap;
-    }
-    .pill.good{ color:#166534; border-color:var(--goodBd); background:var(--goodBg); }
-    .pill.warn{ color:#92400e; border-color:var(--warnBd); background:var(--warnBg); }
-    .pill.bad{ color:#991b1b; border-color:var(--badBd); background:var(--badBg); }
-    .pill.neutral{ color:#475569; border-color:#e2e8f0; background:#f8fafc; }
+        .sub {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
 
-    details{
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:18px;
-      padding:12px;
-    }
-    summary{
-      cursor:pointer;
-      font-weight:950;
-      list-style:none;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    summary::-webkit-details-marker{ display:none; }
-    .sumRight{ display:flex; align-items:center; gap:8px; color:var(--muted); font-size:12px; }
-    .chev{
-      width:22px;height:22px;border-radius:10px;
-      border:1px solid var(--border);
-      background:#f8fafc;
-      display:grid;place-items:center;
-      color:var(--muted);
-      font-family:var(--mono);
-      font-size:12px;
-      flex:0 0 auto;
-      transition: transform .12s ease;
-    }
-    details[open] .chev{ transform: rotate(90deg); }
-    .sectionBody{ margin-top:10px; color:var(--text); }
+        .card {
+            background: var(--card);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(230, 235, 244, .95);
+            border-radius: var(--r2);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
 
-    /* Issues */
-    .issues{ display:flex; flex-direction:column; gap:10px; }
-    .issueRow{
-      border:1px solid var(--border);
-      border-radius:16px;
-      background:#fff;
-      padding:12px;
-      display:grid;
-      grid-template-columns: 1fr auto;
-      gap:12px;
-      align-items:start;
-    }
-    .issueTitle{ font-weight:950; }
-    .issueMeta{ margin-top:6px; color:var(--muted); font-size:13px; line-height:1.5; }
-    .issueFix{ margin-top:8px; font-size:13px; line-height:1.5; }
-    .issueDelta{
-      border:1px solid var(--border);
-      background:#f8fafc;
-      color:var(--muted);
-      border-radius:999px;
-      padding:6px 10px;
-      height:fit-content;
-      font-family:var(--mono);
-      font-size:12px;
-      font-weight:950;
-      min-width:70px;
-      text-align:center;
-      white-space:nowrap;
-    }
-    .mono{ font-family:var(--mono); }
-    .emptyState{
-      border:1px dashed var(--border);
-      border-radius:16px;
-      padding:12px;
-      color:var(--muted);
-      background:#fff;
-      font-size:13px;
-      line-height:1.55;
-    }
+        .cardHd {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(230, 235, 244, .95);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: rgba(255, 255, 255, .65);
+        }
 
-    /* Checks */
-    .checkRow{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      padding:10px 10px;
-      border:1px solid var(--border);
-      border-radius:16px;
-      background:#fff;
-      margin-bottom:10px;
-    }
-    .checkName{
-      font-weight:950;
-      font-size:13px;
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-    .checkHint{ margin-top:4px; font-size:12px; color:var(--muted); line-height:1.45; }
-    .kv{ display:grid; grid-template-columns: 140px 1fr; gap:8px; margin-top:8px; }
-    @media (max-width:680px){ .kv{ grid-template-columns:1fr; } }
-    .k{ color:var(--muted); font-size:12px; }
-    .v{ font-family:var(--mono); font-size:12px; overflow:auto; }
+        .cardHd .t {
+            font-weight: 950;
+            font-size: 14px;
+        }
 
-    /* Right-side icons */
-    .statusBox{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      font-weight:950;
-      font-size:12px;
-      white-space:nowrap;
-    }
-    .icon{
-      width:26px;height:26px;border-radius:999px;
-      display:grid;place-items:center;
-      font-weight:950;
-      line-height:1;
-      user-select:none;
-      border:1px solid var(--border);
-      background:#f8fafc;
-      color:var(--muted);
-    }
-    .icon.good{ border-color:var(--goodBd); background:var(--goodBg); color:#166534; }
-    .icon.warn{ border-color:var(--warnBd); background:var(--warnBg); color:#92400e; }
-    .icon.bad{  border-color:var(--badBd);  background:var(--badBg);  color:#991b1b; }
+        .cardHd .s {
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
 
-    .textBadge{
-      padding:7px 10px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:#f8fafc;
-      color:var(--muted);
-    }
-    .textBadge.bad{ border-color:var(--badBd); background:var(--badBg); color:#991b1b; }
-    .textBadge.warn{ border-color:var(--warnBd); background:var(--warnBg); color:#92400e; }
-    .textBadge.good{ border-color:var(--goodBd); background:var(--goodBg); color:#166534; }
+        .cardBd {
+            padding: 16px;
+        }
 
-    .code{
-      white-space:pre-wrap;
-      font-family:var(--mono);
-      background:#0b1220;
-      color:#e5e7eb;
-      border:1px solid #111827;
-      border-radius:16px;
-      padding:12px;
-      overflow:auto;
-      max-height:420px;
-    }
+        .row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+        }
 
-    /* DNSBL chips */
-    .dnsSection{ margin-top:10px; }
-    .dnsTitle{ display:flex; align-items:center; gap:8px; font-weight:950; font-size:13px; margin-bottom:8px; }
-    .dnsCount{
-      font-size:12px; color:var(--muted);
-      border:1px solid var(--border); background:#f8fafc;
-      border-radius:999px; padding:3px 8px; font-weight:950;
-    }
-    .dnsList{ display:flex; flex-wrap:wrap; gap:8px; }
-    .dnsItem{
-      font-family:var(--mono);
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:#f8fafc;
-      color:var(--muted);
-    }
-    .dnsItem.good{ border-color:var(--goodBd); background:var(--goodBg); color:#166534; }
-    .dnsItem.bad{ border-color:var(--badBd); background:var(--badBg); color:#991b1b; }
-    .dnsItem.warn{ border-color:var(--warnBd); background:var(--warnBg); color:#92400e; }
+        @media (max-width: 840px) {
+            .row {
+                grid-template-columns:1fr;
+            }
+        }
 
-    .note{ margin-top:12px; color:var(--muted); font-size:12px; line-height:1.55; }
-  </style>
+        .input {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 16px;
+            padding: 13px 14px;
+            font-size: 14px;
+            font-family: var(--mono);
+            outline: none;
+            box-shadow: 0 12px 26px rgba(11, 18, 32, .06);
+        }
+
+        .btns {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            border-radius: 16px;
+            padding: 11px 13px;
+            font-weight: 950;
+            cursor: pointer;
+            transition: transform .06s ease, box-shadow .15s ease, border-color .15s ease;
+        }
+
+        .btn:hover {
+            box-shadow: 0 14px 30px rgba(11, 18, 32, .10);
+            border-color: #d7dfef;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn.primary {
+            background: linear-gradient(180deg, var(--primary), var(--primary2));
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .btn.primary:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .statusLine {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .statusLeft {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: #cbd5e1;
+        }
+
+        .dot.good {
+            background: var(--good);
+        }
+
+        .dot.warn {
+            background: var(--warn);
+        }
+
+        .dot.bad {
+            background: var(--bad);
+        }
+
+        .progressWrap {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            min-width: 260px;
+        }
+
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            border: 2px solid rgba(43, 89, 255, .25);
+            border-top-color: rgba(43, 89, 255, 1);
+            animation: spin .7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .bar {
+            flex: 1 1 auto;
+            height: 8px;
+            border-radius: 999px;
+            background: #e9efff;
+            overflow: hidden;
+            border: 1px solid #dbe4ff;
+        }
+
+        .bar > i {
+            display: block;
+            height: 100%;
+            width: 40%;
+            background: linear-gradient(90deg, var(--primary), rgba(43, 89, 255, .45));
+            animation: slide 1.0s ease-in-out infinite;
+        }
+
+        @keyframes slide {
+            0% {
+                transform: translateX(-120%);
+            }
+            100% {
+                transform: translateX(280%);
+            }
+        }
+
+        #reportWrap {
+            display: none;
+            margin-top: 14px;
+        }
+
+        .scoreCard {
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: #fff;
+            padding: 14px;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .scoreCard.good {
+            border-color: var(--goodBd);
+            background: var(--goodBg);
+        }
+
+        .scoreCard.warn {
+            border-color: var(--warnBd);
+            background: var(--warnBg);
+        }
+
+        .scoreCard.bad {
+            border-color: var(--badBd);
+            background: var(--badBg);
+        }
+
+        .scoreCard.neutral {
+            border-color: var(--border);
+            background: #fff;
+        }
+
+        .scoreLeft {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .scoreBox {
+            width: 70px;
+            height: 70px;
+            border-radius: 18px;
+            background: #fff;
+            border: 1px solid var(--border);
+            display: grid;
+            place-items: center;
+            text-align: center;
+        }
+
+        .scoreN {
+            font-weight: 950;
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .scoreSub {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .scoreText .title {
+            font-weight: 950;
+            font-size: 16px;
+            margin: 0;
+        }
+
+        .scoreText .desc {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 4px;
+            line-height: 1.45;
+        }
+
+        /* Pills */
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            font-size: 12px;
+            font-weight: 950;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .pill.good {
+            color: #166534;
+            border-color: var(--goodBd);
+            background: var(--goodBg);
+        }
+
+        .pill.warn {
+            color: #92400e;
+            border-color: var(--warnBd);
+            background: var(--warnBg);
+        }
+
+        .pill.bad {
+            color: #991b1b;
+            border-color: var(--badBd);
+            background: var(--badBg);
+        }
+
+        .pill.neutral {
+            color: #475569;
+            border-color: #e2e8f0;
+            background: #f8fafc;
+        }
+
+        details {
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 18px;
+            padding: 12px;
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: 950;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .sumRight {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .chev {
+            width: 22px;
+            height: 22px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            display: grid;
+            place-items: center;
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 12px;
+            flex: 0 0 auto;
+            transition: transform .12s ease;
+        }
+
+        details[open] .chev {
+            transform: rotate(90deg);
+        }
+
+        .sectionBody {
+            margin-top: 10px;
+            color: var(--text);
+        }
+
+        /* Issues */
+        .issues {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .issueRow {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: #fff;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .issueTitle {
+            font-weight: 950;
+        }
+
+        .issueMeta {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .issueFix {
+            margin-top: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .issueDelta {
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            color: var(--muted);
+            border-radius: 999px;
+            padding: 6px 10px;
+            height: fit-content;
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 950;
+            min-width: 70px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .mono {
+            font-family: var(--mono);
+        }
+
+        .emptyState {
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            padding: 12px;
+            color: var(--muted);
+            background: #fff;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        /* Checks */
+        .checkRow {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 10px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: #fff;
+            margin-bottom: 10px;
+        }
+
+        .checkName {
+            font-weight: 950;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkHint {
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.45;
+        }
+
+        .kv {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 680px) {
+            .kv {
+                grid-template-columns:1fr;
+            }
+        }
+
+        .k {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .v {
+            font-family: var(--mono);
+            font-size: 12px;
+            overflow: auto;
+        }
+
+        /* Right-side icons */
+        .statusBox {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 950;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            font-weight: 950;
+            line-height: 1;
+            user-select: none;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            color: var(--muted);
+        }
+
+        .icon.good {
+            border-color: var(--goodBd);
+            background: var(--goodBg);
+            color: #166534;
+        }
+
+        .icon.warn {
+            border-color: var(--warnBd);
+            background: var(--warnBg);
+            color: #92400e;
+        }
+
+        .icon.bad {
+            border-color: var(--badBd);
+            background: var(--badBg);
+            color: #991b1b;
+        }
+
+        .textBadge {
+            padding: 7px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            color: var(--muted);
+        }
+
+        .textBadge.bad {
+            border-color: var(--badBd);
+            background: var(--badBg);
+            color: #991b1b;
+        }
+
+        .textBadge.warn {
+            border-color: var(--warnBd);
+            background: var(--warnBg);
+            color: #92400e;
+        }
+
+        .textBadge.good {
+            border-color: var(--goodBd);
+            background: var(--goodBg);
+            color: #166534;
+        }
+
+        .code {
+            white-space: pre-wrap;
+            font-family: var(--mono);
+            background: #0b1220;
+            color: #e5e7eb;
+            border: 1px solid #111827;
+            border-radius: 16px;
+            padding: 12px;
+            overflow: auto;
+            max-height: 420px;
+        }
+
+        /* DNSBL chips */
+        .dnsSection {
+            margin-top: 10px;
+        }
+
+        .dnsTitle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 950;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .dnsCount {
+            font-size: 12px;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-weight: 950;
+        }
+
+        .dnsList {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .dnsItem {
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            color: var(--muted);
+        }
+
+        .dnsItem.good {
+            border-color: var(--goodBd);
+            background: var(--goodBg);
+            color: #166534;
+        }
+
+        .dnsItem.bad {
+            border-color: var(--badBd);
+            background: var(--badBg);
+            color: #991b1b;
+        }
+
+        .dnsItem.warn {
+            border-color: var(--warnBd);
+            background: var(--warnBg);
+            color: #92400e;
+        }
+
+        .note {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.55;
+        }
+    </style>
 </head>
 
 <body>
-  <div class="wrap">
+<div class="wrap">
     <div class="header">
-      <div class="logo" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-          <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" stroke="white" stroke-width="2"/>
-          <path d="M6.5 8l5.5 4 5.5-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <div class="titleBlock">
-        <h1>Mail Tester</h1>
-        <div class="sub">
-          Step 1: Send your email to the generated test address.<br/>
-          Step 2: Click <b>Check score</b> to get a deliverability report (authentication, reputation, headers, and SpamAssassin signals).
+        <div class="logo" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" stroke="white" stroke-width="2"/>
+                <path d="M6.5 8l5.5 4 5.5-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </div>
-      </div>
+        <div class="titleBlock">
+            <h1>Mail Tester</h1>
+            <div class="sub">
+                Step 1: Send your email to the generated test address.<br/>
+                Step 2: Click <b>Check score</b> to get a deliverability report (authentication, reputation, headers, and SpamAssassin signals).
+            </div>
+        </div>
     </div>
 
     <div class="card">
-      <div class="cardHd">
-        <div class="t">Test address</div>
-        <div class="s" id="rightStatus">Status: —</div>
-      </div>
-      <div class="cardBd">
-        <div class="row">
-          <input id="toAddress" class="input" readonly placeholder="Generating..."/>
-          <div class="btns">
-            <button id="btnCopy" class="btn">Copy</button>
-            <button id="btnCheck" class="btn primary" disabled>Check score</button>
-            <button id="btnRegen" class="btn">Regenerate</button>
-          </div>
+        <div class="cardHd">
+            <div class="t">Test address</div>
+            <div class="s" id="rightStatus">Status: —</div>
         </div>
-
-        <div class="statusLine">
-          <div class="statusLeft">
-            <span id="dot" class="dot warn"></span>
-            <span id="statusText">Generating address…</span>
-          </div>
-
-          <div id="progressWrap" class="progressWrap" aria-hidden="true">
-            <span class="spinner"></span>
-            <span class="bar"><i></i></span>
-          </div>
-        </div>
-
-        <div id="reportWrap">
-          <div class="scoreCard neutral" id="scoreCard" style="margin-top:12px;">
-            <div class="scoreLeft">
-              <div class="scoreBox">
-                <div>
-                  <div class="scoreN" id="scoreNum">—</div>
-                  <div class="scoreSub">/ 10</div>
+        <div class="cardBd">
+            <div class="row">
+                <input id="toAddress" class="input" readonly placeholder="Generating..."/>
+                <div class="btns">
+                    <button id="btnCopy" class="btn">Copy</button>
+                    <button id="btnCheck" class="btn primary" disabled>Check score</button>
+                    <button id="btnRegen" class="btn">Regenerate</button>
                 </div>
-              </div>
-              <div class="scoreText">
-                <div class="title" id="gradeText">—</div>
-                <div class="desc" id="summaryText">—</div>
-              </div>
             </div>
 
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-              <span class="pill neutral" id="pillStatus">status</span>
-              <span class="pill neutral" id="pillSA">SpamAssassin: n/a</span>
-            </div>
-          </div>
+            <div class="statusLine">
+                <div class="statusLeft">
+                    <span id="dot" class="dot warn"></span>
+                    <span id="statusText">Generating address…</span>
+                </div>
 
-          <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
-            <details open>
-              <summary>
-                <span>Fix Recommendations</span>
-                <span class="sumRight">
+                <div id="progressWrap" class="progressWrap" aria-hidden="true">
+                    <span class="spinner"></span>
+                    <span class="bar"><i></i></span>
+                </div>
+            </div>
+
+            <div id="reportWrap">
+                <div class="scoreCard neutral" id="scoreCard" style="margin-top:12px;">
+                    <div class="scoreLeft">
+                        <div class="scoreBox">
+                            <div>
+                                <div class="scoreN" id="scoreNum">—</div>
+                                <div class="scoreSub">/ 10</div>
+                            </div>
+                        </div>
+                        <div class="scoreText">
+                            <div class="title" id="gradeText">—</div>
+                            <div class="desc" id="summaryText">—</div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                        <span class="pill neutral" id="pillStatus">status</span>
+                        <span class="pill neutral" id="pillSA">SpamAssassin: n/a</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
+                    <details open>
+                        <summary>
+                            <span>Fix Recommendations</span>
+                            <span class="sumRight">
                   <span class="pill neutral" id="issuePill">0 issue(s)</span>
                   <span class="chev">›</span>
                 </span>
-              </summary>
-              <div class="sectionBody">
-                <div id="issues" class="issues"></div>
-              </div>
-            </details>
+                        </summary>
+                        <div class="sectionBody">
+                            <div id="issues" class="issues"></div>
+                        </div>
+                    </details>
 
-            <details open>
-              <summary>
-                <span>SpamAssassin</span>
-                <span class="sumRight">
+                    <details open>
+                        <summary>
+                            <span>SpamAssassin</span>
+                            <span class="sumRight">
                   <span class="pill neutral" id="saHeadline">—</span>
                   <span class="chev">›</span>
                 </span>
-              </summary>
-              <div class="sectionBody">
-                <div class="note" style="margin-bottom:10px;">
-                  SpamAssassin assigns a score based on rules. If the score meets or exceeds the threshold, it is considered spam.
-                  This is a useful signal, but inbox placement also depends on authentication, reputation, and engagement.
-                </div>
-                <div class="code" id="saReport">(no report)</div>
-              </div>
-            </details>
+                        </summary>
+                        <div class="sectionBody">
+                            <div class="note" style="margin-bottom:10px;">
+                                SpamAssassin assigns a score based on rules. If the score meets or exceeds the threshold, it is considered spam.
+                                This is a useful signal, but inbox placement also depends on authentication, reputation, and engagement.
+                            </div>
+                            <div class="code" id="saReport">(no report)</div>
+                        </div>
+                    </details>
 
-            <details open>
-              <summary>
-                <span>Credentials</span>
-                <span class="sumRight">
+                    <details open>
+                        <summary>
+                            <span>Credentials</span>
+                            <span class="sumRight">
                   <span style="color:var(--muted);font-size:12px;">SPF / DKIM / DMARC / Headers / rDNS</span>
                   <span class="chev">›</span>
                 </span>
-              </summary>
-              <div class="sectionBody" id="checksBody"></div>
-            </details>
+                        </summary>
+                        <div class="sectionBody" id="checksBody"></div>
+                    </details>
 
-            <details open>
-              <summary>
-                <span>DNSBL / blocklists</span>
-                <span class="sumRight">
+                    <details open>
+                        <summary>
+                            <span>DNSBL / blocklists</span>
+                            <span class="sumRight">
                   <span style="color:var(--muted);font-size:12px;">Listed in red • Not listed in green</span>
                   <span class="chev">›</span>
                 </span>
-              </summary>
-              <div class="sectionBody" id="dnsblBody"></div>
-            </details>
+                        </summary>
+                        <div class="sectionBody" id="dnsblBody"></div>
+                    </details>
 
-            <details>
-              <summary>
-                <span>Message details (İleti detayı)</span>
-                <span class="sumRight">
+                    <details>
+                        <summary>
+                            <span>Message details (İleti detayı)</span>
+                            <span class="sumRight">
                   <span class="pill neutral" id="msgPill">n/a</span>
                   <span class="chev">›</span>
                 </span>
-              </summary>
-              <div class="sectionBody">
-                <div class="code" id="msgRaw">(no message data)</div>
-                <div class="note">
-                  Bu alan, API cevabındaki <span class="mono">result.meta.body</span> (body) ve/veya
-                  <span class="mono">result.raw_email</span> / <span class="mono">result.message_raw</span> gibi raw alanlarını gösterir.
+                        </summary>
+                        <div class="sectionBody">
+                            <div class="code" id="msgRaw">(no message data)</div>
+                            <div class="note">
+                                Bu alan, API cevabındaki <span class="mono">result.meta.body</span> (body) ve/veya
+                                <span class="mono">result.raw_email</span> / <span class="mono">result.message_raw</span> gibi raw alanlarını gösterir.
+                            </div>
+                        </div>
+                    </details>
                 </div>
-              </div>
-            </details>
-          </div>
-        </div>
+            </div>
 
-      </div>
+        </div>
     </div>
 
-  </div>
+</div>
 
 <script>
-  const API_BASE = new URL("/api", location.origin).toString();
+    const API_BASE = new URL("/api", location.origin).toString();
 
-  let currentTo = null;
-  let runId = 0;
-  let pollTimer = null;
-  let activeAbort = null;
+    let currentTo = null;
+    let runId = 0;
+    let pollTimer = null;
+    let activeAbort = null;
 
-  const $ = (id) => document.getElementById(id);
-  const safeJson = (o) => { try { return JSON.stringify(o, null, 2); } catch { return String(o); } };
-
-  function setStatus(text, kind = "warn") {
-    $("statusText").textContent = text;
-    $("dot").className = "dot " + (kind || "");
-  }
-  function setRightStatus(st) { $("rightStatus").textContent = `Status: ${st || "—"}`; }
-  function showProgress(on) { $("progressWrap").style.display = on ? "flex" : "none"; }
-  function stopPolling(){ if (pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
-  function cancelInFlight(){ try { activeAbort?.abort(); } catch {} activeAbort=null; }
-  function hideReport(){ $("reportWrap").style.display = "none"; }
-  function showReport(){ $("reportWrap").style.display = "block"; }
-
-  async function apiGenerate(signal) {
-    const res = await fetch(`${API_BASE}/generate`, { method: "POST", signal });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(`Generate failed: ${res.status}`);
-
-    const addr =
-      data.to_address ||
-      data.toAddress ||
-      data.address ||
-      data.email ||
-      data.test_address ||
-      (typeof data.result === "string" ? data.result : null) ||
-      data.result?.to_address ||
-      data.result?.address ||
-      data.result?.email;
-
-    if (!addr) throw new Error("Generate response did not include address. Raw: " + safeJson(data));
-    return addr;
-  }
-
-  async function apiResult(toAddr, signal) {
-    const encoded = encodeURIComponent(toAddr);
-    const res = await fetch(`${API_BASE}/result/${encoded}`, { signal });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(`Result failed: ${res.status}`);
-    return data;
-  }
-
-  function scoreBand(score) {
-    const s = Number(score);
-    if (!isFinite(s)) return "neutral";
-    if (s >= 8) return "good";
-    if (s >= 6) return "warn";
-    return "bad";
-  }
-
-  function parseSaFromReport(reportText) {
-    const t = String(reportText || "");
-    const m = t.match(/Spam:\s*(True|False)\s*;\s*([-\d.]+)\s*\/\s*([-\d.]+)/i);
-    if (!m) return null;
-    return { isSpam: m[1].toLowerCase() === "true", score: Number(m[2]), threshold: Number(m[3]) };
-  }
-  function formatSaScore(score) {
-    const n = Number(score);
-    if (!isFinite(n)) return "—";
-    return `${Math.abs(n).toFixed(1)}`;
-  }
-
-  function normalizeIssues(result) {
-    const a = Array.isArray(result?.issues) ? result.issues : null;
-    if (a) return a;
-    const b = Array.isArray(result?.items) ? result.items : null;
-    if (b) return b;
-    const c = Array.isArray(result?.summary?.top_issues) ? result.summary.top_issues : null;
-    return c || [];
-  }
-
-  function impactLabel(value) {
-    const v = Math.abs(Number(value || 0));
-    if (v >= 2) return "High";
-    if (v >= 0.8) return "Medium";
-    return "Low";
-  }
-
-  function getIssueFields(it) {
-    const text = it?.text || it?.title || it?.message || "Issue";
-    const value = (it?.value != null) ? Number(it.value) : Number(it?.points ?? it?.delta ?? 0);
-    const how = it?.how_to_fix || it?.fix || it?.howToFix || it?.recommendation || "";
-    const sev = it?.severity || "";
-    const det = it?.details || "";
-    return { text, value: isFinite(value) ? value : 0, how, sev, det };
-  }
-
-  function renderTopSummary(status, result) {
-    const score = (typeof result.score === "number") ? result.score : Number(result.score || 0);
-    $("scoreNum").textContent = isFinite(score) ? score.toFixed(1) : "—";
-    $("gradeText").textContent = result.title || result?.summary?.grade || "—";
-
-    const band = scoreBand(score);
-    $("scoreCard").classList.remove("good","warn","bad","neutral");
-    $("scoreCard").classList.add(band);
-
-    const issues = normalizeIssues(result);
-    const issueCount = issues.length;
-
-    const best = score >= 9.5 ? "Excellent" : (score >= 8 ? "Good" : (score >= 6 ? "Needs work" : "Poor"));
-    $("summaryText").textContent =
-      issueCount === 0
-        ? `${best}. No major deliverability issues detected.`
-        : `${best}. Found ${issueCount} issue(s). Fix the items below to improve inbox placement.`;
-
-    $("pillStatus").textContent = status || "unknown";
-    $("pillStatus").classList.remove("good","warn","bad","neutral");
-    $("pillStatus").classList.add(
-      status === "analyzed" ? "good" :
-      (status === "processing" || status === "pending") ? "warn" :
-      (status === "error" || status === "expired") ? "bad" : "neutral"
-    );
-
-    // SpamAssassin top pill (scoreCard right)
-    const sa = result?.checks?.spamassassin || {};
-    let saText = "SpamAssassin: n/a";
-    let saKind = "neutral";
-
-    // Prefer structured fields from backend
-    if (sa?.status === "ok" && (sa.is_spam === true || sa.is_spam === false) && Number.isFinite(Number(sa.score)) && Number.isFinite(Number(sa.threshold))) {
-      if (sa.is_spam) {
-        saKind = "bad";
-        saText = `SpamAssassin: Risk (${Number(sa.score).toFixed(1)} / ${Number(sa.threshold).toFixed(1)})`;
-      } else {
-        saKind = "good";
-        saText = `SpamAssassin: Clean (${Number(sa.score).toFixed(1)} / ${Number(sa.threshold).toFixed(1)})`;
-      }
-    } else {
-      // Fallback: parse from report
-      const report = (sa?.report || "").trim();
-      if (report) {
-        const parsed = parseSaFromReport(report);
-        if (parsed) {
-          if (parsed.isSpam) {
-            saKind = "bad";
-            saText = `SpamAssassin: Risk (${formatSaScore(parsed.score)} / ${Math.abs(parsed.threshold).toFixed(1)})`;
-          } else {
-            saKind = "good";
-            saText = `SpamAssassin: Clean (${formatSaScore(parsed.score)} / ${Math.abs(parsed.threshold).toFixed(1)})`;
-          }
-        } else {
-          saKind = "neutral";
-          saText = "SpamAssassin: Report";
+    const $ = (id) => document.getElementById(id);
+    const safeJson = (o) => {
+        try {
+            return JSON.stringify(o, null, 2);
+        } catch {
+            return String(o);
         }
-      } else if (sa?.error) {
-        saKind = "warn";
-        saText = "SpamAssassin: error";
-      }
+    };
+
+    function setStatus(text, kind = "warn") {
+        $("statusText").textContent = text;
+        $("dot").className = "dot " + (kind || "");
     }
 
-    $("pillSA").textContent = saText;
-    $("pillSA").classList.remove("good","warn","bad","neutral");
-    $("pillSA").classList.add(saKind);
-
-    $("issuePill").textContent = `${issueCount} issue(s)`;
-    $("issuePill").classList.remove("good","warn","bad","neutral");
-    $("issuePill").classList.add(issueCount === 0 ? "good" : (issueCount <= 2 ? "warn" : "bad"));
-  }
-
-  function renderIssues(result) {
-    const host = $("issues");
-    host.innerHTML = "";
-
-    const issues = normalizeIssues(result);
-    if (issues.length === 0) {
-      const ok = document.createElement("div");
-      ok.className = "emptyState";
-      ok.innerHTML = "<b>No issues detected.</b> Your email looks good for deliverability.";
-      host.appendChild(ok);
-      return;
+    function setRightStatus(st) {
+        $("rightStatus").textContent = `Status: ${st || "—"}`;
     }
 
-    const sorted = issues.slice().sort((a, b) => Math.abs(Number(b?.value ?? 0)) - Math.abs(Number(a?.value ?? 0)));
-    for (const it of sorted) {
-      const { text, value, how, sev, det } = getIssueFields(it);
-      const impact = impactLabel(value);
-      const vAbs = Math.abs(Number(value || 0));
+    function showProgress(on) {
+        $("progressWrap").style.display = on ? "flex" : "none";
+    }
 
-      const el = document.createElement("div");
-      el.className = "issueRow";
-      el.innerHTML = `
+    function stopPolling() {
+        if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    function cancelInFlight() {
+        try {
+            activeAbort?.abort();
+        } catch {
+        }
+        activeAbort = null;
+    }
+
+    function hideReport() {
+        $("reportWrap").style.display = "none";
+    }
+
+    function showReport() {
+        $("reportWrap").style.display = "block";
+    }
+
+    async function apiGenerate(signal) {
+        const res = await fetch(`${API_BASE}/generate`, {method: "POST", signal});
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(`Generate failed: ${res.status}`);
+
+        const addr =
+            data.to_address ||
+            data.toAddress ||
+            data.address ||
+            data.email ||
+            data.test_address ||
+            (typeof data.result === "string" ? data.result : null) ||
+            data.result?.to_address ||
+            data.result?.address ||
+            data.result?.email;
+
+        if (!addr) throw new Error("Generate response did not include address. Raw: " + safeJson(data));
+        return addr;
+    }
+
+    async function apiResult(toAddr, signal) {
+        const encoded = encodeURIComponent(toAddr);
+        const res = await fetch(`${API_BASE}/result/${encoded}`, {signal});
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(`Result failed: ${res.status}`);
+        return data;
+    }
+
+    function scoreBand(score) {
+        const s = Number(score);
+        if (!isFinite(s)) return "neutral";
+        if (s >= 8) return "good";
+        if (s >= 6) return "warn";
+        return "bad";
+    }
+
+    function parseSaFromReport(reportText) {
+        const t = String(reportText || "");
+        const m = t.match(/Spam:\s*(True|False)\s*;\s*([-\d.]+)\s*\/\s*([-\d.]+)/i);
+        if (!m) return null;
+        return {isSpam: m[1].toLowerCase() === "true", score: Number(m[2]), threshold: Number(m[3])};
+    }
+
+    function formatSaScore(score) {
+        const n = Number(score);
+        if (!isFinite(n)) return "—";
+        return `${Math.abs(n).toFixed(1)}`;
+    }
+
+    function normalizeIssues(result) {
+        const a = Array.isArray(result?.issues) ? result.issues : null;
+        if (a) return a;
+        const b = Array.isArray(result?.items) ? result.items : null;
+        if (b) return b;
+        const c = Array.isArray(result?.summary?.top_issues) ? result.summary.top_issues : null;
+        return c || [];
+    }
+
+    function impactLabel(value) {
+        const v = Math.abs(Number(value || 0));
+        if (v >= 2) return "High";
+        if (v >= 0.8) return "Medium";
+        return "Low";
+    }
+
+    function getIssueFields(it) {
+        const text = it?.text || it?.title || it?.message || "Issue";
+        const value = (it?.value != null) ? Number(it.value) : Number(it?.points ?? it?.delta ?? 0);
+        const how = it?.how_to_fix || it?.fix || it?.howToFix || it?.recommendation || "";
+        const sev = it?.severity || "";
+        const det = it?.details || "";
+        return {text, value: isFinite(value) ? value : 0, how, sev, det};
+    }
+
+    function renderTopSummary(status, result) {
+        const score = (typeof result.score === "number") ? result.score : Number(result.score || 0);
+        $("scoreNum").textContent = isFinite(score) ? score.toFixed(1) : "—";
+        $("gradeText").textContent = result.title || result?.summary?.grade || "—";
+
+        const band = scoreBand(score);
+        $("scoreCard").classList.remove("good", "warn", "bad", "neutral");
+        $("scoreCard").classList.add(band);
+
+        const issues = normalizeIssues(result);
+        const issueCount = issues.length;
+
+        const best = score >= 9.5 ? "Excellent" : (score >= 8 ? "Good" : (score >= 6 ? "Needs work" : "Poor"));
+        $("summaryText").textContent =
+            issueCount === 0
+                ? `${best}. No major deliverability issues detected.`
+                : `${best}. Found ${issueCount} issue(s). Fix the items below to improve inbox placement.`;
+
+        $("pillStatus").textContent = status || "unknown";
+        $("pillStatus").classList.remove("good", "warn", "bad", "neutral");
+        $("pillStatus").classList.add(
+            status === "analyzed" ? "good" :
+                (status === "processing" || status === "pending") ? "warn" :
+                    (status === "error" || status === "expired") ? "bad" : "neutral"
+        );
+
+        // SpamAssassin top pill (scoreCard right)
+        const sa = result?.checks?.spamassassin || {};
+        let saText = "SpamAssassin: n/a";
+        let saKind = "neutral";
+
+        // Prefer structured fields from backend
+        if (sa?.status === "ok" && (sa.is_spam === true || sa.is_spam === false) && Number.isFinite(Number(sa.score)) && Number.isFinite(Number(sa.threshold))) {
+            if (sa.is_spam) {
+                saKind = "bad";
+                saText = `SpamAssassin: Risk (${Number(sa.score).toFixed(1)} / ${Number(sa.threshold).toFixed(1)})`;
+            } else {
+                saKind = "good";
+                saText = `SpamAssassin: Clean (${Number(sa.score).toFixed(1)} / ${Number(sa.threshold).toFixed(1)})`;
+            }
+        } else {
+            // Fallback: parse from report
+            const report = (sa?.report || "").trim();
+            if (report) {
+                const parsed = parseSaFromReport(report);
+                if (parsed) {
+                    if (parsed.isSpam) {
+                        saKind = "bad";
+                        saText = `SpamAssassin: Risk (${formatSaScore(parsed.score)} / ${Math.abs(parsed.threshold).toFixed(1)})`;
+                    } else {
+                        saKind = "good";
+                        saText = `SpamAssassin: Clean (${formatSaScore(parsed.score)} / ${Math.abs(parsed.threshold).toFixed(1)})`;
+                    }
+                } else {
+                    saKind = "neutral";
+                    saText = "SpamAssassin: Report";
+                }
+            } else if (sa?.error) {
+                saKind = "warn";
+                saText = "SpamAssassin: error";
+            }
+        }
+
+        $("pillSA").textContent = saText;
+        $("pillSA").classList.remove("good", "warn", "bad", "neutral");
+        $("pillSA").classList.add(saKind);
+
+        $("issuePill").textContent = `${issueCount} issue(s)`;
+        $("issuePill").classList.remove("good", "warn", "bad", "neutral");
+        $("issuePill").classList.add(issueCount === 0 ? "good" : (issueCount <= 2 ? "warn" : "bad"));
+    }
+
+    function renderIssues(result) {
+        const host = $("issues");
+        host.innerHTML = "";
+
+        const issues = normalizeIssues(result);
+        if (issues.length === 0) {
+            const ok = document.createElement("div");
+            ok.className = "emptyState";
+            ok.innerHTML = "<b>No issues detected.</b> Your email looks good for deliverability.";
+            host.appendChild(ok);
+            return;
+        }
+
+        const sorted = issues.slice().sort((a, b) => Math.abs(Number(b?.value ?? 0)) - Math.abs(Number(a?.value ?? 0)));
+        for (const it of sorted) {
+            const {text, value, how, sev, det} = getIssueFields(it);
+            const impact = impactLabel(value);
+            const vAbs = Math.abs(Number(value || 0));
+
+            const el = document.createElement("div");
+            el.className = "issueRow";
+            el.innerHTML = `
         <div>
           <div class="issueTitle">${escapeHtml(text)}</div>
           <div class="issueMeta">
@@ -704,50 +1085,50 @@
         </div>
         <div class="issueDelta">-${vAbs.toFixed(2)}</div>
       `;
-      host.appendChild(el);
+            host.appendChild(el);
+        }
     }
-  }
 
-  // Status mapping:
-  // - ok -> good
-  // - warning -> warn
-  // - missing -> bad
-  // - skipped/unknown -> TREAT AS MISSING (user request)
-  function verdictFromStatus(status) {
-    const s = String(status || "").toLowerCase().trim();
-    if (["ok","pass","passed","true","exists","found","present","valid"].includes(s)) return { kind:"good", text:"Succeeded" };
-    if (["warning","warn"].includes(s)) return { kind:"warn", text:"Warning" };
-    if (["missing","fail","failed","false","invalid","not_found","notfound"].includes(s)) return { kind:"bad", text:"Missing" };
-    if (["skipped","unknown",""].includes(s)) return { kind:"bad", text:"Missing" };
-    return { kind:"bad", text:"Missing" };
-  }
-
-  function asRecordText(v) {
-    if (v == null) return "";
-    if (Array.isArray(v)) return v.filter(Boolean).join("\n");
-    if (typeof v === "object") return safeJson(v);
-    return String(v);
-  }
-
-  function renderRightBadge(verdict){
-    if (verdict.kind === "good") {
-      return `<span class="statusBox" title="Succeeded"><span class="icon good">✓</span></span>`;
+    // Status mapping:
+    // - ok -> good
+    // - warning -> warn
+    // - missing -> bad
+    // - skipped/unknown -> TREAT AS MISSING (user request)
+    function verdictFromStatus(status) {
+        const s = String(status || "").toLowerCase().trim();
+        if (["ok", "pass", "passed", "true", "exists", "found", "present", "valid"].includes(s)) return {kind: "good", text: "Succeeded"};
+        if (["warning", "warn"].includes(s)) return {kind: "warn", text: "Warning"};
+        if (["missing", "fail", "failed", "false", "invalid", "not_found", "notfound"].includes(s)) return {kind: "bad", text: "Missing"};
+        if (["skipped", "unknown", ""].includes(s)) return {kind: "bad", text: "Missing"};
+        return {kind: "bad", text: "Missing"};
     }
-    if (verdict.kind === "warn") {
-      return `<span class="statusBox" title="Warning"><span class="icon warn">!</span></span>`;
-    }
-    return `<span class="statusBox" title="Missing"><span class="icon bad">✕</span></span>`;
-  }
 
-  function renderCheckCard({name, hint, verdict, kv}) {
-    const kvHtml = (kv || [])
-      .filter(([k,v]) => String(v || "").trim() !== "")
-      .map(([k,v]) => `
+    function asRecordText(v) {
+        if (v == null) return "";
+        if (Array.isArray(v)) return v.filter(Boolean).join("\n");
+        if (typeof v === "object") return safeJson(v);
+        return String(v);
+    }
+
+    function renderRightBadge(verdict) {
+        if (verdict.kind === "good") {
+            return `<span class="statusBox" title="Succeeded"><span class="icon good">✓</span></span>`;
+        }
+        if (verdict.kind === "warn") {
+            return `<span class="statusBox" title="Warning"><span class="icon warn">!</span></span>`;
+        }
+        return `<span class="statusBox" title="Missing"><span class="icon bad">✕</span></span>`;
+    }
+
+    function renderCheckCard({name, hint, verdict, kv}) {
+        const kvHtml = (kv || [])
+            .filter(([k, v]) => String(v || "").trim() !== "")
+            .map(([k, v]) => `
         <div class="k">${escapeHtml(k)}</div>
         <div class="v">${escapeHtml(String(v))}</div>
       `).join("");
 
-    return `
+        return `
       <div class="checkRow">
         <div style="min-width:0;flex:1 1 auto;">
           <div class="checkName">${escapeHtml(name)}</div>
@@ -757,93 +1138,93 @@
         ${renderRightBadge(verdict)}
       </div>
     `;
-  }
+    }
 
-  function renderChecks(result) {
-    const host = $("checksBody");
-    host.innerHTML = "";
+    function renderChecks(result) {
+        const host = $("checksBody");
+        host.innerHTML = "";
 
-    const checks = result.checks || {};
-    const headers = checks.headers || {};
-    const spf = checks.spf || {};
-    const dkim = checks.dkim || {};
-    const dmarc = checks.dmarc || {};
-    const rdns = checks.rdns || {};
-    const senderIp = checks.sender_ip || {};
+        const checks = result.checks || {};
+        const headers = checks.headers || {};
+        const spf = checks.spf || {};
+        const dkim = checks.dkim || {};
+        const dmarc = checks.dmarc || {};
+        const rdns = checks.rdns || {};
+        const senderIp = checks.sender_ip || {};
 
-    const blocks = [];
+        const blocks = [];
 
-    blocks.push(renderCheckCard({
-      name: "SPF",
-      hint: "Sender Policy Framework (TXT record: v=spf1 ...)",
-      verdict: verdictFromStatus(spf.status),
-      kv: [
-        ["Domain", spf.domain || result?.meta?.sender_domain || ""],
-        ["Record", asRecordText(spf.record)]
-      ]
-    }));
+        blocks.push(renderCheckCard({
+            name: "SPF",
+            hint: "Sender Policy Framework (TXT record: v=spf1 ...)",
+            verdict: verdictFromStatus(spf.status),
+            kv: [
+                ["Domain", spf.domain || result?.meta?.sender_domain || ""],
+                ["Record", asRecordText(spf.record)]
+            ]
+        }));
 
-    blocks.push(renderCheckCard({
-      name: "DKIM",
-      hint: "DomainKeys Identified Mail (selector TXT + signing)",
-      verdict: verdictFromStatus(dkim.status),
-      kv: [
-        ["Domain", dkim.domain || result?.meta?.sender_domain || ""],
-        ["Record", asRecordText(dkim.record)],
-        ["DKIM content", asRecordText(dkim.dkim_content)]
-      ]
-    }));
+        blocks.push(renderCheckCard({
+            name: "DKIM",
+            hint: "DomainKeys Identified Mail (selector TXT + signing)",
+            verdict: verdictFromStatus(dkim.status),
+            kv: [
+                ["Domain", dkim.domain || result?.meta?.sender_domain || ""],
+                ["Record", asRecordText(dkim.record)],
+                ["DKIM content", asRecordText(dkim.dkim_content)]
+            ]
+        }));
 
-    blocks.push(renderCheckCard({
-      name: "DMARC",
-      hint: "DMARC policy (_dmarc TXT record)",
-      verdict: verdictFromStatus(dmarc.status),
-      kv: [
-        ["Domain", dmarc.domain || result?.meta?.sender_domain || ""],
-        ["Record", asRecordText(dmarc.record)]
-      ]
-    }));
+        blocks.push(renderCheckCard({
+            name: "DMARC",
+            hint: "DMARC policy (_dmarc TXT record)",
+            verdict: verdictFromStatus(dmarc.status),
+            kv: [
+                ["Domain", dmarc.domain || result?.meta?.sender_domain || ""],
+                ["Record", asRecordText(dmarc.record)]
+            ]
+        }));
 
-    blocks.push(renderCheckCard({
-      name: "Headers",
-      hint: "Required + recommended headers (Date / Message-ID / List-Unsubscribe)",
-      verdict: verdictFromStatus(headers.status || (headers?.missing_required?.length ? "warning" : "ok")),
-      kv: [
-        ["Missing required", (headers.missing_required || []).join(", ") || "—"],
-        ["Missing recommended", (headers.missing_recommended || []).join(", ") || "—"],
-        ["From", headers?.raw?.from || result?.meta?.from || ""],
-        ["To", headers?.raw?.to || result?.meta?.to || ""],
-        ["Subject", headers?.raw?.subject || result?.meta?.subject || ""],
-        ["Date", headers?.raw?.date || ""],
-        ["Message-ID", headers?.raw?.message_id || ""]
-      ]
-    }));
+        blocks.push(renderCheckCard({
+            name: "Headers",
+            hint: "Required + recommended headers (Date / Message-ID / List-Unsubscribe)",
+            verdict: verdictFromStatus(headers.status || (headers?.missing_required?.length ? "warning" : "ok")),
+            kv: [
+                ["Missing required", (headers.missing_required || []).join(", ") || "—"],
+                ["Missing recommended", (headers.missing_recommended || []).join(", ") || "—"],
+                ["From", headers?.raw?.from || result?.meta?.from || ""],
+                ["To", headers?.raw?.to || result?.meta?.to || ""],
+                ["Subject", headers?.raw?.subject || result?.meta?.subject || ""],
+                ["Date", headers?.raw?.date || ""],
+                ["Message-ID", headers?.raw?.message_id || ""]
+            ]
+        }));
 
-    blocks.push(renderCheckCard({
-      name: "rDNS",
-      hint: "Reverse DNS / PTR record for sender IP",
-      verdict: verdictFromStatus(rdns.status),
-      kv: [
-        ["Sender IP", senderIp.value || result?.meta?.sender_ip || ""],
-        ["Hostname", rdns.hostname || ""],
-        ["Success", (rdns.success === null || rdns.success === undefined) ? "" : String(rdns.success)],
-        ["Skipped", rdns.skipped ? "true" : "false"]
-      ]
-    }));
+        blocks.push(renderCheckCard({
+            name: "rDNS",
+            hint: "Reverse DNS / PTR record for sender IP",
+            verdict: verdictFromStatus(rdns.status),
+            kv: [
+                ["Sender IP", senderIp.value || result?.meta?.sender_ip || ""],
+                ["Hostname", rdns.hostname || ""],
+                ["Success", (rdns.success === null || rdns.success === undefined) ? "" : String(rdns.success)],
+                ["Skipped", rdns.skipped ? "true" : "false"]
+            ]
+        }));
 
-    host.innerHTML = blocks.join("") || `<div class="emptyState">(no checks)</div>`;
-  }
+        host.innerHTML = blocks.join("") || `<div class="emptyState">(no checks)</div>`;
+    }
 
-  function renderDNSBL(result) {
-    const host = $("dnsblBody");
-    host.innerHTML = "";
+    function renderDNSBL(result) {
+        const host = $("dnsblBody");
+        host.innerHTML = "";
 
-    const checks = result.checks || {};
-    const bl = checks.blacklists || null;
-    const res = bl?.results || null;
+        const checks = result.checks || {};
+        const bl = checks.blacklists || null;
+        const res = bl?.results || null;
 
-    if (!res || typeof res !== "object" || Object.keys(res).length === 0) {
-      host.innerHTML = `
+        if (!res || typeof res !== "object" || Object.keys(res).length === 0) {
+            host.innerHTML = `
         <div class="checkRow" style="margin-bottom:0;">
           <div style="min-width:0;flex:1 1 auto;">
             <div class="checkName">DNSBL</div>
@@ -852,19 +1233,19 @@
           <span class="statusBox" title="Succeeded"><span class="icon good">✓</span></span>
         </div>
       `;
-      return;
-    }
+            return;
+        }
 
-    const listed = [], notListed = [], timeout = [], err = [];
-    for (const [name, st] of Object.entries(res)) {
-      if (st === "listed") listed.push(name);
-      else if (st === "not_listed") notListed.push(name);
-      else if (st === "timeout") timeout.push(name);
-      else err.push(name);
-    }
+        const listed = [], notListed = [], timeout = [], err = [];
+        for (const [name, st] of Object.entries(res)) {
+            if (st === "listed") listed.push(name);
+            else if (st === "not_listed") notListed.push(name);
+            else if (st === "timeout") timeout.push(name);
+            else err.push(name);
+        }
 
-    const isPass = listed.length === 0;
-    const summary = `
+        const isPass = listed.length === 0;
+        const summary = `
       <div class="checkRow" style="margin-bottom:10px;">
         <div style="min-width:0;flex:1 1 auto;">
           <div class="checkName">DNSBL summary</div>
@@ -876,9 +1257,9 @@
       </div>
     `;
 
-    function section(title, arr, kind) {
-      if (!arr.length) return "";
-      return `
+        function section(title, arr, kind) {
+            if (!arr.length) return "";
+            return `
         <div class="dnsSection">
           <div class="dnsTitle">${escapeHtml(title)} <span class="dnsCount">${arr.length}</span></div>
           <div class="dnsList">
@@ -886,256 +1267,275 @@
           </div>
         </div>
       `;
+        }
+
+        host.innerHTML =
+            summary +
+            section("Listed on", listed, "bad") +
+            section("Not listed on", notListed, "good") +
+            section("Timeout", timeout, "warn") +
+            section("Other errors", err, "warn");
     }
 
-    host.innerHTML =
-      summary +
-      section("Listed on", listed, "bad") +
-      section("Not listed on", notListed, "good") +
-      section("Timeout", timeout, "warn") +
-      section("Other errors", err, "warn");
-  }
-
-  // Friendly SpamAssassin wording (user request)
-  function formatSaFriendly(sa) {
-    if (!sa || sa.status === "error") {
-      return { kind: "warn", text: "SpamAssassin yorumu alınamadı" };
-    }
-    if (sa.is_spam === false) {
-      return { kind: "good", text: "SpamAssassin mesajınızı olumlu buldu" };
-    }
-    if (sa.is_spam === true) {
-      return { kind: "bad", text: "SpamAssassin mesajınızı geliştirilebilir buldu" };
-    }
-    return { kind: "neutral", text: "SpamAssassin sonucu net değil" };
-  }
-
-  function renderSpamAssassin(result) {
-    const sa = result?.checks?.spamassassin || {};
-    const report = (sa.report || "").trim();
-    $("saReport").textContent = report ? report : "(no report)";
-
-    const f = formatSaFriendly(sa);
-
-    let extra = "";
-    if (Number.isFinite(Number(sa.score)) && Number.isFinite(Number(sa.threshold))) {
-      extra = ` · ${Number(sa.score).toFixed(1)} / ${Number(sa.threshold).toFixed(1)}`;
-    } else if (report) {
-      const parsed = parseSaFromReport(report);
-      if (parsed) {
-        extra = ` · ${Number(parsed.score).toFixed(1)} / ${Number(parsed.threshold).toFixed(1)}`;
-      }
+    // Friendly SpamAssassin wording (user request)
+    function formatSaFriendly(sa) {
+        if (!sa || sa.status === "error") {
+            return {kind: "warn", text: "SpamAssassin yorumu alınamadı"};
+        }
+        if (sa.is_spam === false) {
+            return {kind: "good", text: "SpamAssassin mesajınızı olumlu buldu"};
+        }
+        if (sa.is_spam === true) {
+            return {kind: "bad", text: "SpamAssassin mesajınızı geliştirilebilir buldu"};
+        }
+        return {kind: "neutral", text: "SpamAssassin sonucu net değil"};
     }
 
-    $("saHeadline").textContent = f.text + extra;
-    $("saHeadline").classList.remove("good","warn","bad","neutral");
-    $("saHeadline").classList.add(f.kind);
-  }
+    function renderSpamAssassin(result) {
+        const sa = result?.checks?.spamassassin || {};
+        const report = (sa.report || "").trim();
+        $("saReport").textContent = report ? report : "(no report)";
 
-  function pickRawMessage(payload) {
-    const r = payload?.result || {};
-    return (
-      r.raw_email ||
-      r.message_raw ||
-      r.raw ||
-      r.eml ||
-      payload?.raw_email ||
-      payload?.message_raw ||
-      payload?.raw ||
-      null
-    );
-  }
+        const f = formatSaFriendly(sa);
 
-  // Message details: show meta.body (new) and raw if present
-  function renderMessageDetails(payload) {
-    const result = payload?.result || {};
-    const meta = result?.meta || {};
+        let extra = "";
+        if (Number.isFinite(Number(sa.score)) && Number.isFinite(Number(sa.threshold))) {
+            extra = ` · ${Number(sa.score).toFixed(1)} / ${Number(sa.threshold).toFixed(1)}`;
+        } else if (report) {
+            const parsed = parseSaFromReport(report);
+            if (parsed) {
+                extra = ` · ${Number(parsed.score).toFixed(1)} / ${Number(parsed.threshold).toFixed(1)}`;
+            }
+        }
 
-    const raw = pickRawMessage(payload);
-    const body = meta?.body;
-
-    if (!raw && !(body && String(body).trim())) {
-      $("msgRaw").textContent = "(no message data)";
-      $("msgPill").textContent = "n/a";
-      $("msgPill").classList.remove("good","warn","bad","neutral");
-      $("msgPill").classList.add("neutral");
-      return;
+        $("saHeadline").textContent = f.text + extra;
+        $("saHeadline").classList.remove("good", "warn", "bad", "neutral");
+        $("saHeadline").classList.add(f.kind);
     }
 
-    $("msgPill").textContent = "available";
-    $("msgPill").classList.remove("good","warn","bad","neutral");
-    $("msgPill").classList.add("good");
-
-    let out = "";
-
-    out += "Body:\n";
-    out += (body && String(body).trim()) ? String(body).trim() : "(n/a)";
-    out += "\n\n";
-
-    out += "Raw message:\n";
-    out += raw ? String(raw) : "(n/a)";
-
-    $("msgRaw").textContent = out;
-  }
-
-  function renderAll(payload) {
-    const status = payload?.status || "unknown";
-    const result = payload?.result || {};
-    renderTopSummary(status, result);
-    renderIssues(result);
-    renderSpamAssassin(result);
-    renderChecks(result);
-    renderDNSBL(result);
-    renderMessageDetails(payload);
-  }
-
-  function escapeHtml(s) {
-    return String(s ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#39;");
-  }
-
-  async function refreshOnce(localRunId) {
-    if (localRunId !== runId) return;
-    const to = currentTo;
-    const signal = activeAbort?.signal;
-
-    const payload = await apiResult(to, signal);
-    if (localRunId !== runId) return;
-    if (to !== currentTo) return;
-
-    const st = payload?.status || "unknown";
-    setRightStatus(st);
-
-    if (st === "analyzed" || st === "error" || st === "expired") {
-      showProgress(false);
-      showReport();
-      renderAll(payload);
-
-      if (st === "analyzed") setStatus("Analyzed. Showing results.", "good");
-      else setStatus(`Finished with status: ${st}`, "bad");
-
-      stopPolling();
-      $("btnCheck").disabled = false;
-      $("btnCheck").textContent = "Check score";
-      return;
+    function pickRawMessage(payload) {
+        const r = payload?.result || {};
+        return (
+            r.raw_email ||
+            r.message_raw ||
+            r.raw ||
+            r.eml ||
+            payload?.raw_email ||
+            payload?.message_raw ||
+            payload?.raw ||
+            null
+        );
     }
 
-    hideReport();
-    showProgress(true);
-    setStatus(`Waiting… (${st})`, "warn");
-  }
+    // Message details: show meta.body (new) and raw if present
+    function pickRawMessage(payload) {
+        const r = payload?.result || {};
+        return (
+            r.raw_email ||
+            r.message_raw ||
+            r.raw ||
+            r.eml ||
+            payload?.raw_email ||
+            payload?.message_raw ||
+            payload?.raw ||
+            null
+        );
+    }
 
-  function startPolling(localRunId) {
-    stopPolling();
-    pollTimer = setInterval(async () => {
-      try {
-        await refreshOnce(localRunId);
-      } catch (e) {
+    function renderMessageDetails(payload) {
+        const result = payload?.result || {};
+        const meta = result?.meta || {};
+
+        const raw = pickRawMessage(payload);     // backend: base["raw_email"] veya benzeri
+        const body = meta?.body;                 // backend: meta["body"]
+
+        // ikisi de yoksa
+        if (!raw && !(body && String(body).trim())) {
+            $("msgRaw").textContent = "(no message data)";
+            $("msgPill").textContent = "n/a";
+            $("msgPill").classList.remove("good", "warn", "bad", "neutral");
+            $("msgPill").classList.add("neutral");
+            return;
+        }
+
+        $("msgPill").textContent = "available";
+        $("msgPill").classList.remove("good", "warn", "bad", "neutral");
+        $("msgPill").classList.add("good");
+
+        let out = "";
+        out += "Body:\n";
+        out += (body && String(body).trim()) ? String(body).trim() : "(n/a)";
+        out += "\n\n";
+        out += "Raw message:\n";
+        out += raw ? String(raw) : "(n/a)";
+
+        $("msgRaw").textContent = out;
+    }
+
+
+    function renderAll(payload) {
+        const status = payload?.status || "unknown";
+        const result = payload?.result || {};
+        renderTopSummary(status, result);
+        renderIssues(result);
+        renderSpamAssassin(result);
+        renderChecks(result);
+        renderDNSBL(result);
+        renderMessageDetails(payload);
+    }
+
+    function escapeHtml(s) {
+        return String(s ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+    }
+
+    async function refreshOnce(localRunId) {
         if (localRunId !== runId) return;
-        stopPolling();
-        showProgress(false);
+        const to = currentTo;
+        const signal = activeAbort?.signal;
+
+        const payload = await apiResult(to, signal);
+        if (localRunId !== runId) return;
+        if (to !== currentTo) return;
+
+        const st = payload?.status || "unknown";
+        setRightStatus(st);
+
+        if (st === "analyzed" || st === "error" || st === "expired") {
+            showProgress(false);
+            showReport();
+            renderAll(payload);
+
+            if (st === "analyzed") setStatus("Analyzed. Showing results.", "good");
+            else setStatus(`Finished with status: ${st}`, "bad");
+
+            stopPolling();
+            $("btnCheck").disabled = false;
+            $("btnCheck").textContent = "Check score";
+            return;
+        }
+
         hideReport();
-        setStatus("Error: " + (e?.message || e), "bad");
-        $("btnCheck").disabled = false;
+        showProgress(true);
+        setStatus(`Waiting… (${st})`, "warn");
+    }
+
+    function startPolling(localRunId) {
+        stopPolling();
+        pollTimer = setInterval(async () => {
+            try {
+                await refreshOnce(localRunId);
+            } catch (e) {
+                if (localRunId !== runId) return;
+                stopPolling();
+                showProgress(false);
+                hideReport();
+                setStatus("Error: " + (e?.message || e), "bad");
+                $("btnCheck").disabled = false;
+                $("btnCheck").textContent = "Check score";
+            }
+        }, 2500);
+    }
+
+    async function generateAddress() {
+        runId += 1;
+        const localRunId = runId;
+
+        stopPolling();
+        cancelInFlight();
+        activeAbort = new AbortController();
+
+        hideReport();
+        showProgress(false);
+
+        $("toAddress").value = "";
+        $("btnCheck").disabled = true;
         $("btnCheck").textContent = "Check score";
-      }
-    }, 2500);
-  }
+        currentTo = null;
 
-  async function generateAddress() {
-    runId += 1;
-    const localRunId = runId;
+        setStatus("Generating address…", "warn");
+        setRightStatus("—");
 
-    stopPolling();
-    cancelInFlight();
-    activeAbort = new AbortController();
+        const addr = await apiGenerate(activeAbort.signal);
+        if (localRunId !== runId) return;
 
-    hideReport();
-    showProgress(false);
+        currentTo = addr;
+        $("toAddress").value = addr;
 
-    $("toAddress").value = "";
-    $("btnCheck").disabled = true;
-    $("btnCheck").textContent = "Check score";
-    currentTo = null;
-
-    setStatus("Generating address…", "warn");
-    setRightStatus("—");
-
-    const addr = await apiGenerate(activeAbort.signal);
-    if (localRunId !== runId) return;
-
-    currentTo = addr;
-    $("toAddress").value = addr;
-
-    setStatus("Address ready. Send your email, then click Check score.", "good");
-    setRightStatus("pending");
-    $("btnCheck").disabled = false;
-  }
-
-  $("btnCopy").addEventListener("click", async () => {
-    const v = $("toAddress").value;
-    if (!v) return;
-    try {
-      await navigator.clipboard.writeText(v);
-      setStatus("Copied to clipboard.", "good");
-      setTimeout(() => { if (currentTo) setStatus("Address ready. Send your email, then click Check score.", "good"); }, 900);
-    } catch {
-      $("toAddress").select();
-      document.execCommand("copy");
-      setStatus("Copied.", "good");
-      setTimeout(() => { if (currentTo) setStatus("Address ready. Send your email, then click Check score.", "good"); }, 900);
+        setStatus("Address ready. Send your email, then click Check score.", "good");
+        setRightStatus("pending");
+        $("btnCheck").disabled = false;
     }
-  });
 
-  $("btnCheck").addEventListener("click", async () => {
-    if (!currentTo) return;
-    hideReport();
-
-    const localRunId = runId;
-
-    try {
-      cancelInFlight();
-      activeAbort = new AbortController();
-
-      $("btnCheck").disabled = true;
-      $("btnCheck").textContent = "Checking…";
-
-      setStatus("Checking for results…", "warn");
-      showProgress(true);
-
-      await refreshOnce(localRunId);
-      startPolling(localRunId);
-    } catch (e) {
-      if (localRunId !== runId) return;
-      showProgress(false);
-      hideReport();
-      setStatus("Error: " + (e?.message || e), "bad");
-      $("btnCheck").disabled = false;
-      $("btnCheck").textContent = "Check score";
-    }
-  });
-
-  $("btnRegen").addEventListener("click", async () => {
-    try { await generateAddress(); }
-    catch (e) {
-      showProgress(false);
-      hideReport();
-      setStatus("Error: " + (e?.message || e), "bad");
-    }
-  });
-
-  (function init() {
-    hideReport();
-    showProgress(false);
-    setRightStatus("—");
-    generateAddress().catch(e => {
-      setStatus("Error: " + (e?.message || e), "bad");
+    $("btnCopy").addEventListener("click", async () => {
+        const v = $("toAddress").value;
+        if (!v) return;
+        try {
+            await navigator.clipboard.writeText(v);
+            setStatus("Copied to clipboard.", "good");
+            setTimeout(() => {
+                if (currentTo) setStatus("Address ready. Send your email, then click Check score.", "good");
+            }, 900);
+        } catch {
+            $("toAddress").select();
+            document.execCommand("copy");
+            setStatus("Copied.", "good");
+            setTimeout(() => {
+                if (currentTo) setStatus("Address ready. Send your email, then click Check score.", "good");
+            }, 900);
+        }
     });
-  })();
+
+    $("btnCheck").addEventListener("click", async () => {
+        if (!currentTo) return;
+        hideReport();
+
+        const localRunId = runId;
+
+        try {
+            cancelInFlight();
+            activeAbort = new AbortController();
+
+            $("btnCheck").disabled = true;
+            $("btnCheck").textContent = "Checking…";
+
+            setStatus("Checking for results…", "warn");
+            showProgress(true);
+
+            await refreshOnce(localRunId);
+            startPolling(localRunId);
+        } catch (e) {
+            if (localRunId !== runId) return;
+            showProgress(false);
+            hideReport();
+            setStatus("Error: " + (e?.message || e), "bad");
+            $("btnCheck").disabled = false;
+            $("btnCheck").textContent = "Check score";
+        }
+    });
+
+    $("btnRegen").addEventListener("click", async () => {
+        try {
+            await generateAddress();
+        } catch (e) {
+            showProgress(false);
+            hideReport();
+            setStatus("Error: " + (e?.message || e), "bad");
+        }
+    });
+
+    (function init() {
+        hideReport();
+        showProgress(false);
+        setRightStatus("—");
+        generateAddress().catch(e => {
+            setStatus("Error: " + (e?.message || e), "bad");
+        });
+    })();
 </script>
 </body>
 </html>
