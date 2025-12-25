@@ -102,6 +102,8 @@ class Analyzer:
             checks["blacklists"] = {"checked": 0, "results": {}, "summary": {}, "skipped": True}
 
 
+
+
         try:
             raw_email = self.msg.as_bytes()
         except Exception:
@@ -118,7 +120,10 @@ class Analyzer:
             "subject": headers.get("Subject"),
             "from": headers.get("From"),
             "to": headers.get("To"),
+            "body": headers.get("Body"),
         }
+
+
 
         base = self.score.result()
 
