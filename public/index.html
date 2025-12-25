@@ -1,1107 +1,753 @@
 <!doctype html>
-<html lang="en">
+<html lang="tr">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Mail Tester</title>
+
   <style>
     :root{
-      --bg1:#f6f8ff;
-      --bg2:#f7fbff;
-      --card:#ffffffcc;
-      --text:#0b1220;
-      --muted:#5b6b84;
-      --border:#e6ebf4;
-      --shadow: 0 18px 46px rgba(11,18,32,.10);
-      --r2:22px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-
-      --primary:#2b59ff;
-      --primary2:#2147d6;
-
-      --good:#16a34a;
-      --warn:#d97706;
-      --bad:#dc2626;
-
-      --goodBg:#f0fdf4;
-      --warnBg:#fffbeb;
-      --badBg:#fef2f2;
-
-      --goodBd:#bbf7d0;
-      --warnBd:#fde68a;
-      --badBd:#fecaca;
+      --bg:#0b1020;
+      --card:#121a33;
+      --card2:#0f1730;
+      --text:#e9ecf5;
+      --muted:#a9b2cc;
+      --border:rgba(255,255,255,.08);
+      --ok:#2ecc71;
+      --fail:#e74c3c;   /* missing için de bunu kullanıyoruz */
+      --unk:#95a5a6;
+      --warn:#f1c40f;
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+      --radius:16px;
     }
+
     *{box-sizing:border-box}
     body{
       margin:0;
-      font-family:var(--sans);
-      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       background:
-        radial-gradient(1200px 700px at 35% -10%, rgba(43,89,255,.18), transparent 58%),
-        radial-gradient(900px 560px at 92% 10%, rgba(22,163,74,.08), transparent 58%),
-        radial-gradient(900px 560px at 8% 20%, rgba(217,119,6,.06), transparent 58%),
-        linear-gradient(180deg, var(--bg1), var(--bg2));
-      min-height:100vh;
-    }
-    .wrap{ max-width:980px; margin:0 auto; padding:34px 16px 70px; }
-    .header{ display:flex; align-items:flex-start; gap:14px; justify-content:center; margin-bottom:18px; }
-    .logo{
-      width:38px;height:38px;border-radius:12px;
-      background:linear-gradient(180deg,var(--primary),var(--primary2));
-      display:grid;place-items:center;color:#fff;
-      box-shadow:0 14px 30px rgba(43,89,255,.22);
-      flex:0 0 auto;
-    }
-    .titleBlock{ max-width:760px; }
-    h1{ margin:0; font-size:20px; font-weight:950; letter-spacing:.2px; }
-    .sub{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.6; }
-
-    .card{
-      background:var(--card);
-      backdrop-filter: blur(10px);
-      border:1px solid rgba(230,235,244,.95);
-      border-radius:var(--r2);
-      box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-    .cardHd{
-      padding:14px 16px;
-      border-bottom:1px solid rgba(230,235,244,.95);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      background:rgba(255,255,255,.65);
-    }
-    .cardHd .t{ font-weight:950; font-size:14px; }
-    .cardHd .s{ font-size:12px; color:var(--muted); white-space:nowrap; }
-    .cardBd{ padding:16px; }
-
-    .row{ display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center; }
-    @media (max-width:840px){ .row{ grid-template-columns:1fr; } }
-    .input{
-      width:100%;
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:16px;
-      padding:13px 14px;
-      font-size:14px;
-      font-family:var(--mono);
-      outline:none;
-      box-shadow:0 12px 26px rgba(11,18,32,.06);
-    }
-    .btns{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
-    .btn{
-      border:1px solid var(--border);
-      background:#fff;
+        radial-gradient(900px 500px at 20% 10%, rgba(120,130,255,.15), transparent 60%),
+        radial-gradient(900px 500px at 80% 10%, rgba(46,204,113,.10), transparent 60%),
+        var(--bg);
       color:var(--text);
-      border-radius:16px;
-      padding:11px 13px;
-      font-weight:950;
-      cursor:pointer;
-      transition: transform .06s ease, box-shadow .15s ease, border-color .15s ease;
     }
-    .btn:hover{ box-shadow:0 14px 30px rgba(11,18,32,.10); border-color:#d7dfef; }
-    .btn:active{ transform: translateY(1px); }
-    .btn.primary{
-      background:linear-gradient(180deg,var(--primary),var(--primary2));
-      border-color:transparent;
-      color:#fff;
-    }
-    .btn.primary:disabled{ opacity:.55; cursor:not-allowed; box-shadow:none; }
 
-    .statusLine{
+    .container{max-width:1100px;margin:40px auto;padding:0 16px}
+    .header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .title{font-size:26px;font-weight:750;letter-spacing:.2px}
+    .subtitle{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.4}
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:16px;
+      box-shadow: var(--shadow);
+    }
+
+    .grid{display:grid;grid-template-columns: 1.2fr .8fr;gap:14px}
+    @media (max-width: 920px){ .grid{grid-template-columns:1fr} }
+
+    label{display:block;font-size:12px;color:var(--muted);margin:6px 0 8px}
+    input, textarea{
+      width:100%;
+      background: rgba(0,0,0,.18);
+      border:1px solid var(--border);
+      color:var(--text);
+      border-radius:12px;
+      padding:12px;
+      outline:none;
+    }
+    textarea{
+      min-height:280px;
+      resize:vertical;
+      line-height:1.45;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size:12.5px;
+    }
+
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width: 520px){ .row{grid-template-columns:1fr} }
+
+    .actions{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+    button{
+      border:0;
+      border-radius:12px;
+      padding:10px 14px;
+      background: rgba(120,130,255,.18);
+      color:var(--text);
+      cursor:pointer;
+      font-weight:650;
+      letter-spacing:.2px;
+      border:1px solid rgba(120,130,255,.25);
+    }
+    button.secondary{
+      background: rgba(255,255,255,.06);
+      border:1px solid var(--border);
+    }
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .hint{color:var(--muted);font-size:12px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+
+    .toast{
       margin-top:10px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-    .statusLeft{ display:flex; align-items:center; gap:10px; color:var(--muted); font-size:13px; }
-    .dot{ width:10px;height:10px;border-radius:999px;background:#cbd5e1; }
-    .dot.good{ background:var(--good); }
-    .dot.warn{ background:var(--warn); }
-    .dot.bad{ background:var(--bad); }
-
-    .progressWrap{ display:none; align-items:center; gap:10px; min-width:260px; }
-    .spinner{
-      width:14px;height:14px;border-radius:999px;
-      border:2px solid rgba(43,89,255,.25);
-      border-top-color: rgba(43,89,255,1);
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg);} }
-    .bar{
-      flex:1 1 auto;
-      height:8px;
-      border-radius:999px;
-      background:#e9efff;
-      overflow:hidden;
-      border:1px solid #dbe4ff;
-    }
-    .bar > i{
-      display:block;
-      height:100%;
-      width:40%;
-      background:linear-gradient(90deg,var(--primary),rgba(43,89,255,.45));
-      animation: slide 1.0s ease-in-out infinite;
-    }
-    @keyframes slide{ 0%{ transform: translateX(-120%); } 100%{ transform: translateX(280%); } }
-
-    #reportWrap{ display:none; margin-top:14px; }
-
-    .scoreCard{
+      padding:10px 12px;
       border:1px solid var(--border);
-      border-radius:18px;
-      background:#fff;
+      border-radius:12px;
+      background: rgba(0,0,0,.16);
+      color: var(--muted);
+      display:none;
+    }
+    .toast.show{display:block}
+
+    /* Results */
+    .results{margin-top:16px;display:none}
+    .results.show{display:block}
+    .cards{display:grid;grid-template-columns: repeat(12, 1fr);gap:12px}
+    .card{
+      grid-column: span 6;
+      background: linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.20));
+      border:1px solid var(--border);
+      border-radius:var(--radius);
       padding:14px;
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      align-items:center;
-      flex-wrap:wrap;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
     }
-    .scoreCard.good{ border-color:var(--goodBd); background:var(--goodBg); }
-    .scoreCard.warn{ border-color:var(--warnBd); background:var(--warnBg); }
-    .scoreCard.bad{ border-color:var(--badBd); background:var(--badBg); }
-    .scoreCard.neutral{ border-color:var(--border); background:#fff; }
+    @media (max-width: 920px){ .card{grid-column:span 12} }
+    .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .card-title{font-weight:750;letter-spacing:.2px}
+    .card-body{color:var(--muted);font-size:12.5px;line-height:1.45}
 
-    .scoreLeft{ display:flex; align-items:center; gap:12px; min-width:0; }
-    .scoreBox{
-      width:70px; height:70px; border-radius:18px;
-      background:#fff; border:1px solid var(--border);
-      display:grid; place-items:center; text-align:center;
-    }
-    .scoreN{ font-weight:950; font-size:20px; line-height:1; }
-    .scoreSub{ font-size:11px; color:var(--muted); margin-top:4px; }
-    .scoreText .title{ font-weight:950; font-size:16px; margin:0; }
-    .scoreText .desc{ color:var(--muted); font-size:13px; margin-top:4px; line-height:1.45; }
-
-    /* Pills */
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:7px 10px; border-radius:999px;
-      border:1px solid var(--border); background:#f8fafc;
-      font-size:12px; font-weight:950; color:var(--muted);
-      white-space:nowrap;
-    }
-    .pill.good{ color:#166534; border-color:var(--goodBd); background:var(--goodBg); }
-    .pill.warn{ color:#92400e; border-color:var(--warnBd); background:var(--warnBg); }
-    .pill.bad{ color:#991b1b; border-color:var(--badBd); background:var(--badBg); }
-    .pill.neutral{ color:#475569; border-color:#e2e8f0; background:#f8fafc; }
-
-    details{
+    .summary{
+      grid-column: span 12;
+      background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.18));
       border:1px solid var(--border);
-      background:#fff;
-      border-radius:18px;
-      padding:12px;
+      border-radius:var(--radius);
+      padding:16px;
     }
-    summary{
-      cursor:pointer;
-      font-weight:950;
-      list-style:none;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
+    .summary-top{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;
     }
-    summary::-webkit-details-marker{ display:none; }
-    .sumRight{ display:flex; align-items:center; gap:8px; color:var(--muted); font-size:12px; }
-    .chev{
-      width:22px;height:22px;border-radius:10px;
-      border:1px solid var(--border);
-      background:#f8fafc;
-      display:grid;place-items:center;
-      color:var(--muted);
-      font-family:var(--mono);
-      font-size:12px;
-      flex:0 0 auto;
-      transition: transform .12s ease;
-    }
-    details[open] .chev{ transform: rotate(90deg); }
-    .sectionBody{ margin-top:10px; color:var(--text); }
-
-    /* Issues */
-    .issues{ display:flex; flex-direction:column; gap:10px; }
-    .issueRow{
-      border:1px solid var(--border);
-      border-radius:16px;
-      background:#fff;
-      padding:12px;
-      display:grid;
-      grid-template-columns: 1fr auto;
-      gap:12px;
-      align-items:start;
-    }
-    .issueTitle{ font-weight:950; }
-    .issueMeta{ margin-top:6px; color:var(--muted); font-size:13px; line-height:1.5; }
-    .issueFix{ margin-top:8px; font-size:13px; line-height:1.5; }
-    .issueDelta{
-      border:1px solid var(--border);
-      background:#f8fafc;
-      color:var(--muted);
-      border-radius:999px;
-      padding:6px 10px;
-      height:fit-content;
-      font-family:var(--mono);
-      font-size:12px;
-      font-weight:950;
-      min-width:70px;
-      text-align:center;
-      white-space:nowrap;
-    }
-    .mono{ font-family:var(--mono); }
-    .emptyState{
-      border:1px dashed var(--border);
-      border-radius:16px;
-      padding:12px;
-      color:var(--muted);
-      background:#fff;
-      font-size:13px;
-      line-height:1.55;
-    }
-
-    /* Checks */
-    .checkRow{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      padding:10px 10px;
-      border:1px solid var(--border);
-      border-radius:16px;
-      background:#fff;
-      margin-bottom:10px;
-    }
-    .checkName{
-      font-weight:950;
-      font-size:13px;
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-    .checkHint{ margin-top:4px; font-size:12px; color:var(--muted); line-height:1.45; }
-    .kv{ display:grid; grid-template-columns: 140px 1fr; gap:8px; margin-top:8px; }
-    @media (max-width:680px){ .kv{ grid-template-columns:1fr; } }
-    .k{ color:var(--muted); font-size:12px; }
-    .v{ font-family:var(--mono); font-size:12px; overflow:auto; }
-
-    /* Right-side icons */
-    .statusBox{
+    .badge{
       display:inline-flex;
       align-items:center;
       gap:8px;
-      font-weight:950;
-      font-size:12px;
-      white-space:nowrap;
-    }
-    .icon{
-      width:26px;height:26px;border-radius:999px;
-      display:grid;place-items:center;
-      font-weight:950;
-      line-height:1;
-      user-select:none;
-      border:1px solid var(--border);
-      background:#f8fafc;
-      color:var(--muted);
-    }
-    .icon.good{ border-color:var(--goodBd); background:var(--goodBg); color:#166534; }
-    .icon.warn{ border-color:var(--warnBd); background:var(--warnBg); color:#92400e; }
-    .icon.bad{  border-color:var(--badBd);  background:var(--badBg);  color:#991b1b; }
-
-    .textBadge{
-      padding:7px 10px;
+      padding:8px 10px;
       border-radius:999px;
-      border:1px solid var(--border);
-      background:#f8fafc;
-      color:var(--muted);
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 700;
+      font-size: 12px;
     }
-    .textBadge.bad{ border-color:var(--badBd); background:var(--badBg); color:#991b1b; }
-    .textBadge.warn{ border-color:var(--warnBd); background:var(--warnBg); color:#92400e; }
-    .textBadge.good{ border-color:var(--goodBd); background:var(--goodBg); color:#166534; }
-
-    .code{
-      white-space:pre-wrap;
-      font-family:var(--mono);
-      background:#0b1220;
-      color:#e5e7eb;
-      border:1px solid #111827;
-      border-radius:16px;
-      padding:12px;
-      overflow:auto;
-      max-height:420px;
-    }
-
-    /* DNSBL chips */
-    .dnsSection{ margin-top:10px; }
-    .dnsTitle{ display:flex; align-items:center; gap:8px; font-weight:950; font-size:13px; margin-bottom:8px; }
-    .dnsCount{
-      font-size:12px; color:var(--muted);
-      border:1px solid var(--border); background:#f8fafc;
-      border-radius:999px; padding:3px 8px; font-weight:950;
-    }
-    .dnsList{ display:flex; flex-wrap:wrap; gap:8px; }
-    .dnsItem{
-      font-family:var(--mono);
-      font-size:12px;
-      padding:6px 10px;
+    .score-pill{
+      display:inline-flex;
+      align-items:baseline;
+      gap:8px;
+      padding:10px 12px;
       border-radius:999px;
+      background: rgba(0,0,0,.14);
       border:1px solid var(--border);
-      background:#f8fafc;
-      color:var(--muted);
     }
-    .dnsItem.good{ border-color:var(--goodBd); background:var(--goodBg); color:#166534; }
-    .dnsItem.bad{ border-color:var(--badBd); background:var(--badBg); color:#991b1b; }
-    .dnsItem.warn{ border-color:var(--warnBd); background:var(--warnBg); color:#92400e; }
+    .score-num{font-weight:900;font-size:18px;color:var(--text)}
+    .score-den{color:var(--muted);font-size:12px}
 
-    .note{ margin-top:12px; color:var(--muted); font-size:12px; line-height:1.55; }
+    .issues{margin-top:10px}
+    .issue{
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background: rgba(0,0,0,.14);
+      margin-top:8px;
+    }
+    .issue-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .issue-title{font-weight:750;color:var(--text)}
+    .issue-meta{color:var(--muted);font-size:12px}
+    .issue-how{margin-top:6px;color:var(--muted)}
+    .issue-code{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 11.5px}
+
+    /* Status icons (ok / missing / unknown) */
+    .status-icon{font-size:16px;cursor:help;user-select:none}
+    .status-icon.ok{color:var(--ok)}
+    .status-icon.missing{color:var(--fail)}
+    .status-icon.unknown{color:var(--unk)}
+    .status-icon.warning{color:var(--warn)}
+
+    .kv{display:grid;grid-template-columns: 160px 1fr;gap:8px;margin-top:6px}
+    .kv div:nth-child(odd){color:var(--muted)}
+    .kv div:nth-child(even){color:var(--text)}
+    .small{font-size:12px;color:var(--muted)}
+
+    /* SpamAssassin */
+    .sa-title{font-weight:750;margin:2px 0 6px;color:var(--text)}
+    .sa-text{color:var(--muted);line-height:1.5}
+    .sa-hint{
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .sa-rules{margin-top: 12px}
+    .sa-rules-title{font-weight:700;color:var(--text);margin-bottom:8px}
+    .sa-rule{
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background: rgba(0,0,0,.14);
+      margin-bottom:8px;
+    }
+    .sa-rule-left{display:flex;gap:10px;align-items:baseline;margin-bottom:4px}
+    .sa-rule-points{font-weight:800;min-width:42px;display:inline-block}
+    .sa-rule-name{font-weight:700;color:var(--text)}
+    .sa-rule-desc{color:var(--muted);font-size:12px;line-height:1.45}
+
+    .footer-note{margin-top:14px;color:var(--muted);font-size:12px}
   </style>
 </head>
 
 <body>
-  <div class="wrap">
+  <div class="container">
     <div class="header">
-      <div class="logo" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-          <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" stroke="white" stroke-width="2"/>
-          <path d="M6.5 8l5.5 4 5.5-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+      <div>
+        <div class="title">Mail Tester</div>
+        <div class="subtitle">
+          SPF / DKIM / DMARC / rDNS / Blacklist ve SpamAssassin kontrolleri.
+          Sonuçlar sadece veri geldikten sonra açılır.
+        </div>
       </div>
-      <div class="titleBlock">
-        <h1>Mail Tester</h1>
-        <div class="sub">
-          Step 1: Send your email to the generated test address.<br/>
-          Step 2: Click <b>Check score</b> to get a deliverability report (authentication, reputation, headers, and SpamAssassin signals).
+      <div class="badge">v1</div>
+    </div>
+
+    <div class="panel">
+      <div class="grid">
+        <!-- LEFT: raw email -->
+        <div>
+          <label for="rawEmail">Raw Email</label>
+          <textarea id="rawEmail" class="mono" placeholder="E-postanın raw içeriğini buraya yapıştır..."></textarea>
+
+          <div class="actions">
+            <button id="btnAnalyze">Check</button>
+            <button id="btnClear" class="secondary" type="button">Clear</button>
+            <span id="loadingText" class="hint" style="display:none;">Kontrol ediliyor...</span>
+          </div>
+
+          <div id="toast" class="toast"></div>
+        </div>
+
+        <!-- RIGHT: inputs -->
+        <div>
+          <div class="row">
+            <div>
+              <label for="domain">Domain</label>
+              <input id="domain" placeholder="ör: example.com" />
+              <div class="small">Not: DKIM/DMARC/SPF kontrolleri bu domain üzerinden yapılır.</div>
+            </div>
+            <div>
+              <label for="senderIp">Sender IP (opsiyonel)</label>
+              <input id="senderIp" placeholder="ör: 1.2.3.4" />
+              <div class="small">IP yoksa rDNS/blacklist “Unknown” görünür.</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <label for="apiUrl">API Endpoint</label>
+            <input id="apiUrl" class="mono" value="/analyze" />
+            <div class="small">
+              Backend endpoint’in farklıysa burayı değiştir. (Örn: <span class="mono">/api/analyze</span>)
+            </div>
+          </div>
+
+          <div class="footer-note">
+            İpucu: “Check” basınca eski sonuçlar ekranda kalmaz; yeni sonuç gelince otomatik açılır.
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="cardHd">
-        <div class="t">Test address</div>
-        <div class="s" id="rightStatus">Status: —</div>
-      </div>
-      <div class="cardBd">
-        <div class="row">
-          <input id="toAddress" class="input" readonly placeholder="Generating..."/>
-          <div class="btns">
-            <button id="btnCopy" class="btn">Copy</button>
-            <button id="btnCheck" class="btn primary" disabled>Check score</button>
-            <button id="btnRegen" class="btn">Regenerate</button>
-          </div>
-        </div>
-
-        <div class="statusLine">
-          <div class="statusLeft">
-            <span id="dot" class="dot warn"></span>
-            <span id="statusText">Generating address…</span>
-          </div>
-
-          <div id="progressWrap" class="progressWrap" aria-hidden="true">
-            <span class="spinner"></span>
-            <span class="bar"><i></i></span>
-          </div>
-        </div>
-
-        <div id="reportWrap">
-          <div class="scoreCard neutral" id="scoreCard" style="margin-top:12px;">
-            <div class="scoreLeft">
-              <div class="scoreBox">
-                <div>
-                  <div class="scoreN" id="scoreNum">—</div>
-                  <div class="scoreSub">/ 10</div>
-                </div>
-              </div>
-              <div class="scoreText">
-                <div class="title" id="gradeText">—</div>
-                <div class="desc" id="summaryText">—</div>
-              </div>
-            </div>
-
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-              <span class="pill neutral" id="pillStatus">status</span>
-              <span class="pill neutral" id="pillSA">SpamAssassin: n/a</span>
-            </div>
-          </div>
-
-          <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
-            <details open>
-              <summary>
-                <span>Fix Recommendations</span>
-                <span class="sumRight">
-                  <span class="pill neutral" id="issuePill">0 issue(s)</span>
-                  <span class="chev">›</span>
-                </span>
-              </summary>
-              <div class="sectionBody">
-                <div id="issues" class="issues"></div>
-              </div>
-            </details>
-
-            <details open>
-              <summary>
-                <span>SpamAssassin</span>
-                <span class="sumRight">
-                  <span class="pill neutral" id="saHeadline">—</span>
-                  <span class="chev">›</span>
-                </span>
-              </summary>
-              <div class="sectionBody">
-                <div class="note" style="margin-bottom:10px;">
-                  SpamAssassin assigns a score based on rules. If the score meets or exceeds the threshold, it is considered spam.
-                  This is a useful signal, but inbox placement also depends on authentication, reputation, and engagement.
-                </div>
-                <div class="code" id="saReport">(no report)</div>
-              </div>
-            </details>
-
-            <details open>
-              <summary>
-                <span>Credentials</span>
-                <span class="sumRight">
-                  <span style="color:var(--muted);font-size:12px;">SPF / DKIM / DMARC / Headers / rDNS</span>
-                  <span class="chev">›</span>
-                </span>
-              </summary>
-              <div class="sectionBody" id="checksBody"></div>
-            </details>
-
-            <details open>
-              <summary>
-                <span>DNSBL / blocklists</span>
-                <span class="sumRight">
-                  <span style="color:var(--muted);font-size:12px;">Listed in red • Not listed in green</span>
-                  <span class="chev">›</span>
-                </span>
-              </summary>
-              <div class="sectionBody" id="dnsblBody"></div>
-            </details>
-
-            <details>
-              <summary>
-                <span>Message details (İleti detayı)</span>
-                <span class="sumRight">
-                  <span class="pill neutral" id="msgPill">n/a</span>
-                  <span class="chev">›</span>
-                </span>
-              </summary>
-              <div class="sectionBody">
-                <div class="code" id="msgRaw">(no message data)</div>
-                <div class="note">Bu alanın çalışması için API payload’ında raw email dön: <span class="mono">result.raw_email</span> veya <span class="mono">result.message_raw</span> vb.</div>
-              </div>
-            </details>
-          </div>
-        </div>
-
-      </div>
+    <!-- RESULTS -->
+    <div id="results" class="results">
+      <div id="cards" class="cards"></div>
     </div>
-
   </div>
 
-<script>
-  const API_BASE = new URL("/api", location.origin).toString();
-
-  let currentTo = null;
-  let runId = 0;
-  let pollTimer = null;
-  let activeAbort = null;
-
-  const $ = (id) => document.getElementById(id);
-  const safeJson = (o) => { try { return JSON.stringify(o, null, 2); } catch { return String(o); } };
-
-  function setStatus(text, kind = "warn") {
-    $("statusText").textContent = text;
-    $("dot").className = "dot " + (kind || "");
-  }
-  function setRightStatus(st) { $("rightStatus").textContent = `Status: ${st || "—"}`; }
-  function showProgress(on) { $("progressWrap").style.display = on ? "flex" : "none"; }
-  function stopPolling(){ if (pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
-  function cancelInFlight(){ try { activeAbort?.abort(); } catch {} activeAbort=null; }
-  function hideReport(){ $("reportWrap").style.display = "none"; }
-  function showReport(){ $("reportWrap").style.display = "block"; }
-
-  async function apiGenerate(signal) {
-    const res = await fetch(`${API_BASE}/generate`, { method: "POST", signal });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(`Generate failed: ${res.status}`);
-
-    const addr =
-      data.to_address ||
-      data.toAddress ||
-      data.address ||
-      data.email ||
-      data.test_address ||
-      (typeof data.result === "string" ? data.result : null) ||
-      data.result?.to_address ||
-      data.result?.address ||
-      data.result?.email;
-
-    if (!addr) throw new Error("Generate response did not include address. Raw: " + safeJson(data));
-    return addr;
-  }
-
-  async function apiResult(toAddr, signal) {
-    const encoded = encodeURIComponent(toAddr);
-    const res = await fetch(`${API_BASE}/result/${encoded}`, { signal });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(`Result failed: ${res.status}`);
-    return data;
-  }
-
-  function scoreBand(score) {
-    const s = Number(score);
-    if (!isFinite(s)) return "neutral";
-    if (s >= 8) return "good";
-    if (s >= 6) return "warn";
-    return "bad";
-  }
-
-  function parseSaFromReport(reportText) {
-    const t = String(reportText || "");
-    const m = t.match(/Spam:\s*(True|False)\s*;\s*([-\d.]+)\s*\/\s*([-\d.]+)/i);
-    if (!m) return null;
-    return { isSpam: m[1].toLowerCase() === "true", score: Number(m[2]), threshold: Number(m[3]) };
-  }
-  function formatSaScore(score) {
-    const n = Number(score);
-    if (!isFinite(n)) return "—";
-    return `${Math.abs(n).toFixed(1)}`;
-  }
-
-  function normalizeIssues(result) {
-    const a = Array.isArray(result?.issues) ? result.issues : null;
-    if (a) return a;
-    const b = Array.isArray(result?.items) ? result.items : null;
-    if (b) return b;
-    const c = Array.isArray(result?.summary?.top_issues) ? result.summary.top_issues : null;
-    return c || [];
-  }
-
-  function impactLabel(value) {
-    const v = Math.abs(Number(value || 0));
-    if (v >= 2) return "High";
-    if (v >= 0.8) return "Medium";
-    return "Low";
-  }
-
-  function getIssueFields(it) {
-    const text = it?.text || it?.title || it?.message || "Issue";
-    const value = (it?.value != null) ? Number(it.value) : Number(it?.points ?? it?.delta ?? 0);
-    const how = it?.how_to_fix || it?.fix || it?.howToFix || it?.recommendation || "";
-    const sev = it?.severity || "";
-    const det = it?.details || "";
-    return { text, value: isFinite(value) ? value : 0, how, sev, det };
-  }
-
-  function renderTopSummary(status, result) {
-    const score = (typeof result.score === "number") ? result.score : Number(result.score || 0);
-    $("scoreNum").textContent = isFinite(score) ? score.toFixed(1) : "—";
-    $("gradeText").textContent = result.title || result?.summary?.grade || "—";
-
-    const band = scoreBand(score);
-    $("scoreCard").classList.remove("good","warn","bad","neutral");
-    $("scoreCard").classList.add(band);
-
-    const issues = normalizeIssues(result);
-    const issueCount = issues.length;
-
-    const best = score >= 9.5 ? "Excellent" : (score >= 8 ? "Good" : (score >= 6 ? "Needs work" : "Poor"));
-    $("summaryText").textContent =
-      issueCount === 0
-        ? `${best}. No major deliverability issues detected.`
-        : `${best}. Found ${issueCount} issue(s). Fix the items below to improve inbox placement.`;
-
-    $("pillStatus").textContent = status || "unknown";
-    $("pillStatus").classList.remove("good","warn","bad","neutral");
-    $("pillStatus").classList.add(
-      status === "analyzed" ? "good" :
-      (status === "processing" || status === "pending") ? "warn" :
-      (status === "error" || status === "expired") ? "bad" : "neutral"
-    );
-
-    const sa = result?.checks?.spamassassin || {};
-    let saText = "SpamAssassin: n/a";
-    let saKind = "neutral";
-
-    const report = (sa?.report || "").trim();
-    if (report) {
-      const parsed = parseSaFromReport(report);
-      if (parsed) {
-        if (parsed.isSpam) {
-          saKind = "bad";
-          saText = `SpamAssassin: Spam (${formatSaScore(parsed.score)} / ${Math.abs(parsed.threshold).toFixed(1)})`;
-        } else {
-          saKind = "good";
-          saText = `SpamAssassin: Not spam (${formatSaScore(parsed.score)} / ${Math.abs(parsed.threshold).toFixed(1)})`;
-        }
-      } else {
-        saKind = "neutral";
-        saText = "SpamAssassin: Report";
-      }
-    } else if (sa?.error) {
-      saKind = "warn";
-      saText = "SpamAssassin: error";
+  <script>
+    // ---------- Utilities ----------
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
 
-    $("pillSA").textContent = saText;
-    $("pillSA").classList.remove("good","warn","bad","neutral");
-    $("pillSA").classList.add(saKind);
-
-    $("issuePill").textContent = `${issueCount} issue(s)`;
-    $("issuePill").classList.remove("good","warn","bad","neutral");
-    $("issuePill").classList.add(issueCount === 0 ? "good" : (issueCount <= 2 ? "warn" : "bad"));
-  }
-
-  function renderIssues(result) {
-    const host = $("issues");
-    host.innerHTML = "";
-
-    const issues = normalizeIssues(result);
-    if (issues.length === 0) {
-      const ok = document.createElement("div");
-      ok.className = "emptyState";
-      ok.innerHTML = "<b>No issues detected.</b> Your email looks good for deliverability.";
-      host.appendChild(ok);
-      return;
+    function showToast(msg, kind = "info") {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      if (kind === "error") el.style.borderColor = "rgba(231,76,60,.35)";
+      else el.style.borderColor = "rgba(255,255,255,.10)";
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => el.classList.remove("show"), 3500);
     }
 
-    const sorted = issues.slice().sort((a, b) => Math.abs(Number(b?.value ?? 0)) - Math.abs(Number(a?.value ?? 0)));
-    for (const it of sorted) {
-      const { text, value, how, sev, det } = getIssueFields(it);
-      const impact = impactLabel(value);
-      const vAbs = Math.abs(Number(value || 0));
-
-      const el = document.createElement("div");
-      el.className = "issueRow";
-      el.innerHTML = `
-        <div>
-          <div class="issueTitle">${escapeHtml(text)}</div>
-          <div class="issueMeta">
-            <b>Impact:</b> ${impact}
-            ${sev ? `· <b>Severity:</b> ${escapeHtml(sev)}` : ""}
-            · <span class="mono">-${vAbs.toFixed(2)}</span> points
-          </div>
-          ${det ? `<div class="issueFix"><b>Details:</b> ${escapeHtml(det)}</div>` : ""}
-          ${how ? `<div class="issueFix"><b>Fix:</b> ${escapeHtml(how)}</div>` : ""}
-        </div>
-        <div class="issueDelta">-${vAbs.toFixed(2)}</div>
-      `;
-      host.appendChild(el);
-    }
-  }
-
-  // Status mapping:
-  // - ok -> good
-  // - warning -> warn
-  // - missing -> bad
-  // - skipped/unknown -> TREAT AS MISSING (user request)
-  function verdictFromStatus(status) {
-    const s = String(status || "").toLowerCase().trim();
-    if (["ok","pass","passed","true","exists","found","present","valid"].includes(s)) return { kind:"good", text:"Succeeded" };
-    if (["warning","warn"].includes(s)) return { kind:"warn", text:"Warning" };
-    if (["missing","fail","failed","false","invalid","not_found","notfound"].includes(s)) return { kind:"bad", text:"Missing" };
-    if (["skipped","unknown",""].includes(s)) return { kind:"bad", text:"Missing" }; // forced
-    return { kind:"bad", text:"Missing" };
-  }
-
-  function asRecordText(v) {
-    if (v == null) return "";
-    if (Array.isArray(v)) return v.filter(Boolean).join("\n");
-    if (typeof v === "object") return safeJson(v);
-    return String(v);
-  }
-
-  function renderRightBadge(verdict){
-    if (verdict.kind === "good") {
-      return `<span class="statusBox" title="Succeeded"><span class="icon good">✓</span></span>`;
-    }
-    if (verdict.kind === "warn") {
-      return `<span class="statusBox" title="Warning"><span class="icon warn">!</span></span>`;
-    }
-    // missing
-    return `<span class="statusBox" title="Missing"><span class="icon bad">✕</span></span>`;
-  }
-
-  function renderCheckCard({name, hint, verdict, kv}) {
-    const kvHtml = (kv || [])
-      .filter(([k,v]) => String(v || "").trim() !== "")
-      .map(([k,v]) => `
-        <div class="k">${escapeHtml(k)}</div>
-        <div class="v">${escapeHtml(String(v))}</div>
-      `).join("");
-
-    return `
-      <div class="checkRow">
-        <div style="min-width:0;flex:1 1 auto;">
-          <div class="checkName">${escapeHtml(name)}</div>
-          <div class="checkHint">${escapeHtml(hint)}</div>
-          ${kvHtml ? `<div class="kv">${kvHtml}</div>` : ``}
-        </div>
-        ${renderRightBadge(verdict)}
-      </div>
-    `;
-  }
-
-  function renderChecks(result) {
-    const host = $("checksBody");
-    host.innerHTML = "";
-
-    const checks = result.checks || {};
-    const headers = checks.headers || {};
-    const spf = checks.spf || {};
-    const dkim = checks.dkim || {};
-    const dmarc = checks.dmarc || {};
-    const rdns = checks.rdns || {};
-    const senderIp = checks.sender_ip || {};
-
-    const blocks = [];
-
-    blocks.push(renderCheckCard({
-      name: "SPF",
-      hint: "Sender Policy Framework (TXT record: v=spf1 ...)",
-      verdict: verdictFromStatus(spf.status),
-      kv: [
-        ["Domain", spf.domain || result?.meta?.sender_domain || ""],
-        ["Record", asRecordText(spf.record)]
-      ]
-    }));
-
-    blocks.push(renderCheckCard({
-      name: "DKIM",
-      hint: "DomainKeys Identified Mail (selector TXT + signing)",
-      verdict: verdictFromStatus(dkim.status),
-      kv: [
-        ["Domain", dkim.domain || result?.meta?.sender_domain || ""],
-        ["Record", asRecordText(dkim.record)],
-        ["DKIM content", asRecordText(dkim.dkim_content)]
-      ]
-    }));
-
-    blocks.push(renderCheckCard({
-      name: "DMARC",
-      hint: "DMARC policy (_dmarc TXT record)",
-      verdict: verdictFromStatus(dmarc.status),
-      kv: [
-        ["Domain", dmarc.domain || result?.meta?.sender_domain || ""],
-        ["Record", asRecordText(dmarc.record)]
-      ]
-    }));
-
-    blocks.push(renderCheckCard({
-      name: "Headers",
-      hint: "Required + recommended headers (Date / Message-ID / List-Unsubscribe)",
-      verdict: verdictFromStatus(headers.status || (headers?.missing_required?.length ? "warning" : "ok")),
-      kv: [
-        ["Missing required", (headers.missing_required || []).join(", ") || "—"],
-        ["Missing recommended", (headers.missing_recommended || []).join(", ") || "—"],
-        ["From", headers?.raw?.from || result?.meta?.from || ""],
-        ["To", headers?.raw?.to || result?.meta?.to || ""],
-        ["Subject", headers?.raw?.subject || result?.meta?.subject || ""],
-        ["Date", headers?.raw?.date || ""],
-        ["Message-ID", headers?.raw?.message_id || ""]
-      ]
-    }));
-
-    blocks.push(renderCheckCard({
-      name: "rDNS",
-      hint: "Reverse DNS / PTR record for sender IP",
-      verdict: verdictFromStatus(rdns.status),
-      kv: [
-        ["Sender IP", senderIp.value || result?.meta?.sender_ip || ""],
-        ["Hostname", rdns.hostname || ""],
-        ["Success", (rdns.success === null || rdns.success === undefined) ? "" : String(rdns.success)],
-        ["Skipped", rdns.skipped ? "true" : "false"]
-      ]
-    }));
-
-    host.innerHTML = blocks.join("") || `<div class="emptyState">(no checks)</div>`;
-  }
-
-  function renderDNSBL(result) {
-    const host = $("dnsblBody");
-    host.innerHTML = "";
-
-    const checks = result.checks || {};
-    const bl = checks.blacklists || null;
-    const res = bl?.results || null;
-
-    // If no results at all -> PASS (green) + message
-    if (!res || typeof res !== "object" || Object.keys(res).length === 0) {
-      host.innerHTML = `
-        <div class="checkRow" style="margin-bottom:0;">
-          <div style="min-width:0;flex:1 1 auto;">
-            <div class="checkName">DNSBL</div>
-            <div class="checkHint">No DNSBL listings detected.</div>
-          </div>
-          <span class="statusBox" title="Succeeded"><span class="icon good">✓</span></span>
-        </div>
-      `;
-      return;
+    function renderStatusIcon(status) {
+      // status: ok / missing / unknown / warning
+      if (status === "ok") return `<span class="status-icon ok" title="Succeeded">✔</span>`;
+      if (status === "missing") return `<span class="status-icon missing" title="Failed">✖</span>`;
+      if (status === "warning") return `<span class="status-icon warning" title="Warning">⚠</span>`;
+      return `<span class="status-icon unknown" title="Unknown">ℹ</span>`;
     }
 
-    const listed = [], notListed = [], timeout = [], err = [];
-    for (const [name, st] of Object.entries(res)) {
-      if (st === "listed") listed.push(name);
-      else if (st === "not_listed") notListed.push(name);
-      else if (st === "timeout") timeout.push(name);
-      else err.push(name);
+    function prettyStatusLabel(status) {
+      if (status === "ok") return "Succeeded";
+      if (status === "missing") return "Failed";
+      if (status === "warning") return "Warning";
+      return "Unknown";
     }
 
-    // Summary line: pass if no listed
-    const isPass = listed.length === 0;
-    const summary = `
-      <div class="checkRow" style="margin-bottom:10px;">
-        <div style="min-width:0;flex:1 1 auto;">
-          <div class="checkName">DNSBL summary</div>
-          <div class="checkHint">${isPass ? "No listings found." : "One or more DNSBL listings detected."}</div>
-        </div>
-        <span class="statusBox" title="${isPass ? "Succeeded" : "Missing"}">
-          <span class="icon ${isPass ? "good" : "bad"}">${isPass ? "✓" : "✕"}</span>
-        </span>
-      </div>
-    `;
-
-    function section(title, arr, kind) {
-      if (!arr.length) return "";
+    function formatScore(score, denom = 5) {
+      const s = (typeof score === "number") ? score : 0;
       return `
-        <div class="dnsSection">
-          <div class="dnsTitle">${escapeHtml(title)} <span class="dnsCount">${arr.length}</span></div>
-          <div class="dnsList">
-            ${arr.map(x => `<span class="dnsItem ${kind}">${escapeHtml(x)}</span>`).join("")}
+        <div class="score-pill">
+          <div class="score-num">${escapeHtml(s)}</div>
+          <div class="score-den">/ ${escapeHtml(denom)}</div>
+        </div>
+      `;
+    }
+
+    function safeArray(v) { return Array.isArray(v) ? v : []; }
+
+    // ---------- SpamAssassin Friendly Text ----------
+    function formatSaMessage(sa) {
+      const score = (sa && typeof sa.score === "number") ? sa.score : null;
+      const thr   = (sa && typeof sa.threshold === "number") ? sa.threshold : null;
+
+      if (!sa || sa.status === "error") {
+        return {
+          status: "unknown",
+          title: "SpamAssassin değerlendirmesi alınamadı",
+          text: "SpamAssassin servisine erişilemediği için bu kontrol atlandı. Diğer kontroller sonuç vermeye devam eder.",
+          hint: sa?.error ? `Hata: ${sa.error}` : null,
+          showRules: false
+        };
+      }
+
+      if (sa.is_spam === false) {
+        return {
+          status: "ok",
+          title: "SpamAssassin mesajınızı olumlu değerlendirdi",
+          text: `Mesaj, SpamAssassin kurallarına göre spam görünmüyor. Skorunuz ${score} / ${thr}.`,
+          hint: "Bu iyi bir sinyal; inbox placement yine de SPF/DKIM/DMARC, itibar ve içerik faktörlerine bağlıdır.",
+          showRules: true
+        };
+      }
+
+      if (sa.is_spam === true) {
+        return {
+          status: "missing", // fail yerine missing kullanıyoruz
+          title: "SpamAssassin mesajınızı riskli buldu",
+          text: `Mesaj spam olarak işaretlenebilir. Skorunuz ${score} / ${thr}. İçeriği ve gönderim ayarlarını iyileştirmek faydalı olur.`,
+          hint: "Aşağıdaki kurallar hangi noktaların risk oluşturduğunu gösterir.",
+          showRules: true
+        };
+      }
+
+      return {
+        status: "unknown",
+        title: "SpamAssassin sonucu net değil",
+        text: "SpamAssassin yanıtı alındı ancak spam değerlendirmesi üretilemedi.",
+        hint: null,
+        showRules: false
+      };
+    }
+
+    function renderSpamAssassinCard(sa) {
+      const fm = formatSaMessage(sa);
+      const rules = safeArray(sa?.rules);
+
+      let rulesHtml = "";
+      if (fm.showRules && rules.length > 0) {
+        rulesHtml = `
+          <div class="sa-rules">
+            <div class="sa-rules-title">Detaylar</div>
+            <div class="sa-rules-list">
+              ${rules.map(r => `
+                <div class="sa-rule">
+                  <div class="sa-rule-left">
+                    <span class="sa-rule-points">${escapeHtml(r.points)}</span>
+                    <span class="sa-rule-name">${escapeHtml(r.name)}</span>
+                  </div>
+                  <div class="sa-rule-desc">${escapeHtml(r.description || "")}</div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">SpamAssassin</div>
+            ${renderStatusIcon(fm.status)}
+          </div>
+          <div class="card-body">
+            <div class="sa-title">${escapeHtml(fm.title)}</div>
+            <div class="sa-text">${escapeHtml(fm.text)}</div>
+            ${fm.hint ? `<div class="sa-hint">${escapeHtml(fm.hint)}</div>` : ""}
+          </div>
+          ${rulesHtml}
+        </div>
+      `;
+    }
+
+    // ---------- Cards ----------
+    function renderDnsCard(label, key, obj) {
+      const status = obj?.status || (obj?.success === true ? "ok" : obj?.success === false ? "missing" : "unknown");
+
+      const record = obj?.record;
+      const recordText = Array.isArray(record)
+        ? record.map(x => `<div class="mono">${escapeHtml(x)}</div>`).join("")
+        : (record ? `<div class="mono">${escapeHtml(record)}</div>` : `<div class="small">Kayıt yok</div>`);
+
+      return `
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">${escapeHtml(label)}</div>
+            ${renderStatusIcon(status)}
+          </div>
+          <div class="card-body">
+            <div class="kv">
+              <div>Status</div><div>${escapeHtml(prettyStatusLabel(status))}</div>
+              <div>Domain</div><div class="mono">${escapeHtml(obj?.domain || "")}</div>
+            </div>
+            <div style="margin-top:10px">
+              <div class="small">Record</div>
+              <div style="margin-top:6px">${recordText}</div>
+            </div>
           </div>
         </div>
       `;
     }
 
-    host.innerHTML =
-      summary +
-      section("Listed on", listed, "bad") +
-      section("Not listed on", notListed, "good") +
-      section("Timeout", timeout, "warn") +
-      section("Other errors", err, "warn");
-  }
+    function renderHeadersCard(headers) {
+      const status = headers?.status || "unknown";
+      const missingReq = safeArray(headers?.missing_required);
+      const missingRec = safeArray(headers?.missing_recommended);
+      const raw = headers?.raw || {};
 
-  function renderSpamAssassin(result) {
-    const sa = result?.checks?.spamassassin || {};
-    const report = (sa.report || "").trim();
-    $("saReport").textContent = report ? report : "(no report)";
+      return `
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Headers</div>
+            ${renderStatusIcon(status === "ok" ? "ok" : "warning")}
+          </div>
+          <div class="card-body">
+            <div class="kv">
+              <div>From</div><div class="mono">${escapeHtml(raw.from || "")}</div>
+              <div>To</div><div class="mono">${escapeHtml(raw.to || "")}</div>
+              <div>Subject</div><div class="mono">${escapeHtml(raw.subject || "")}</div>
+              <div>Date</div><div class="mono">${escapeHtml(raw.date || "")}</div>
+              <div>Message-ID</div><div class="mono">${escapeHtml(raw.message_id || "")}</div>
+            </div>
 
-    let headlineText = "—";
-    let headlineKind = "neutral";
+            ${missingReq.length ? `
+              <div style="margin-top:10px">
+                <div class="small">Missing (required)</div>
+                <div style="margin-top:6px">${missingReq.map(x => `<div class="mono">${escapeHtml(x)}</div>`).join("")}</div>
+              </div>
+            ` : ""}
 
-    if (report) {
-      const parsed = parseSaFromReport(report);
-      if (parsed) {
-        if (parsed.isSpam) {
-          headlineKind = "bad";
-          headlineText = `Spam · ${formatSaScore(parsed.score)} / ${Math.abs(parsed.threshold).toFixed(1)}`;
-        } else {
-          headlineKind = "good";
-          headlineText = `Not spam · ${formatSaScore(parsed.score)} / ${Math.abs(parsed.threshold).toFixed(1)}`;
-        }
-      } else {
-        headlineKind = "neutral";
-        headlineText = "Report available";
+            ${missingRec.length ? `
+              <div style="margin-top:10px">
+                <div class="small">Missing (recommended)</div>
+                <div style="margin-top:6px">${missingRec.map(x => `<div class="mono">${escapeHtml(x)}</div>`).join("")}</div>
+              </div>
+            ` : ""}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSenderIpCard(senderIpObj) {
+      const hasIp = !!senderIpObj?.value;
+      const status = senderIpObj?.status || (hasIp ? "ok" : "missing");
+      return `
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Sender IP</div>
+            ${renderStatusIcon(status)}
+          </div>
+          <div class="card-body">
+            <div class="kv">
+              <div>Status</div><div>${escapeHtml(prettyStatusLabel(status))}</div>
+              <div>IP</div><div class="mono">${escapeHtml(senderIpObj?.value || "")}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRdnsCard(rdnsObj) {
+      // Analyzer: ok / missing / unknown + skipped flag
+      const status = rdnsObj?.status || (rdnsObj?.skipped ? "unknown" : (rdnsObj?.success ? "ok" : "missing"));
+      const hostname = rdnsObj?.hostname ?? null;
+      const skipped = !!rdnsObj?.skipped;
+
+      return `
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">rDNS</div>
+            ${renderStatusIcon(status)}
+          </div>
+          <div class="card-body">
+            <div class="kv">
+              <div>Status</div><div>${escapeHtml(prettyStatusLabel(status))}</div>
+              <div>Hostname</div><div class="mono">${escapeHtml(hostname || "")}</div>
+              <div>Skipped</div><div>${escapeHtml(skipped ? "true" : "false")}</div>
+            </div>
+            ${status === "missing" ? `<div class="sa-hint">Reverse DNS eşleşmesi bulunamadı veya uyumsuz. IP reputasyonu/teslimat için rDNS önerilir.</div>` : ""}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderBlacklistCard(blObj) {
+      // Eğer Analyzer tarafında status eklemediysen yine de çalışır.
+      const skipped = !!blObj?.skipped;
+      const status = blObj?.status || (skipped ? "unknown" : "ok");
+
+      const summary = blObj?.summary || {};
+      const results = blObj?.results || {};
+
+      const listed = Object.entries(results).filter(([k,v]) => v === "listed").map(([k]) => k);
+      const timeouts = Object.entries(results).filter(([k,v]) => v === "timeout").map(([k]) => k);
+      const errors = Object.entries(results).filter(([k,v]) => v === "error").map(([k]) => k);
+
+      const showDetails = !skipped && (listed.length || timeouts.length || errors.length);
+
+      return `
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Blacklists</div>
+            ${renderStatusIcon(status)}
+          </div>
+          <div class="card-body">
+            <div class="kv">
+              <div>Status</div><div>${escapeHtml(prettyStatusLabel(status))}</div>
+              <div>Checked</div><div>${escapeHtml(blObj?.checked ?? 0)}</div>
+              <div>Listed</div><div>${escapeHtml(summary.listed ?? 0)}</div>
+              <div>Not listed</div><div>${escapeHtml(summary.not_listed ?? 0)}</div>
+              <div>Timeout</div><div>${escapeHtml(summary.timeout ?? 0)}</div>
+              <div>Error</div><div>${escapeHtml(summary.error ?? 0)}</div>
+            </div>
+
+            ${showDetails ? `
+              <div style="margin-top:10px">
+                ${listed.length ? `
+                  <div class="sa-hint">
+                    <div style="font-weight:700;color:var(--text);margin-bottom:6px">Listed on</div>
+                    ${listed.map(x => `<div class="mono">${escapeHtml(x)}</div>`).join("")}
+                  </div>
+                ` : ""}
+
+                ${timeouts.length ? `
+                  <div class="sa-hint" style="margin-top:8px">
+                    <div style="font-weight:700;color:var(--text);margin-bottom:6px">Timeout</div>
+                    ${timeouts.map(x => `<div class="mono">${escapeHtml(x)}</div>`).join("")}
+                  </div>
+                ` : ""}
+
+                ${errors.length ? `
+                  <div class="sa-hint" style="margin-top:8px">
+                    <div style="font-weight:700;color:var(--text);margin-bottom:6px">Errors</div>
+                    ${errors.map(x => `<div class="mono">${escapeHtml(x)}</div>`).join("")}
+                  </div>
+                ` : ""}
+              </div>
+            ` : (skipped ? `<div class="sa-hint">Sender IP olmadığı için blacklist kontrolü yapılmadı.</div>` : `<div class="small" style="margin-top:10px">Detay bulunmuyor.</div>`)}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSummaryBlock(result) {
+      const sum = result?.summary || {};
+      const issues = safeArray(sum?.top_issues);
+      const score = result?.score ?? sum?.score ?? 0;
+
+      return `
+        <div class="summary">
+          <div class="summary-top">
+            <div>
+              <div class="badge">${escapeHtml(sum.grade || "Result")}</div>
+              <div style="margin-top:10px;font-size:16px;font-weight:800;color:var(--text)">
+                ${escapeHtml(sum.headline || "Deliverability summary")}
+              </div>
+              <div class="small" style="margin-top:6px">
+                Bu özet, kontrollerin birleşik skoruna göre oluşturulur.
+              </div>
+            </div>
+            ${formatScore(typeof score === "number" ? score : 0, 5)}
+          </div>
+
+          <div class="issues">
+            ${issues.length ? issues.map(it => `
+              <div class="issue">
+                <div class="issue-top">
+                  <div class="issue-title">${escapeHtml(it.title || it.message || "Issue")}</div>
+                  <div class="issue-meta">
+                    <span class="issue-code">${escapeHtml(it.code || "")}</span>
+                    ${it.severity ? ` • ${escapeHtml(it.severity)}` : ""}
+                    ${typeof it.points === "number" ? ` • ${escapeHtml(it.points)} pts` : ""}
+                  </div>
+                </div>
+                ${it.how_to_fix ? `<div class="issue-how">${escapeHtml(it.how_to_fix)}</div>` : ""}
+                ${it.details ? `<div class="issue-how"><span class="small">Details:</span> ${escapeHtml(it.details)}</div>` : ""}
+              </div>
+            `).join("") : `<div class="small">Öne çıkan problem yok.</div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMetaCard(meta) {
+      return `
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Meta</div>
+            ${renderStatusIcon("ok")}
+          </div>
+          <div class="card-body">
+            <div class="kv">
+              <div>From</div><div class="mono">${escapeHtml(meta?.from || "")}</div>
+              <div>To</div><div class="mono">${escapeHtml(meta?.to || "")}</div>
+              <div>Subject</div><div class="mono">${escapeHtml(meta?.subject || "")}</div>
+              <div>Message-ID</div><div class="mono">${escapeHtml(meta?.message_id || "")}</div>
+              <div>Sender domain</div><div class="mono">${escapeHtml(meta?.sender_domain || "")}</div>
+              <div>Sender IP</div><div class="mono">${escapeHtml(meta?.sender_ip || "")}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAll(result) {
+      const checks = result?.checks || {};
+
+      const html = [
+        renderSummaryBlock(result),
+        renderMetaCard(result?.meta),
+        renderDnsCard("SPF", "spf", checks.spf),
+        renderDnsCard("DKIM", "dkim", checks.dkim),
+        renderDnsCard("DMARC", "dmarc", checks.dmarc),
+        renderHeadersCard(checks.headers),
+        renderSenderIpCard(checks.sender_ip),
+        renderRdnsCard(checks.rdns),
+        renderBlacklistCard(checks.blacklists),
+        renderSpamAssassinCard(checks.spamassassin),
+      ].join("");
+
+      document.getElementById("cards").innerHTML = html;
+    }
+
+    // ---------- Request ----------
+    let lastRequestId = 0;
+
+    async function doAnalyze() {
+      const rawEmail = document.getElementById("rawEmail").value.trim();
+      const domain = document.getElementById("domain").value.trim();
+      const senderIp = document.getElementById("senderIp").value.trim();
+      const apiUrl = document.getElementById("apiUrl").value.trim() || "/analyze";
+
+      if (!rawEmail) {
+        showToast("Raw email boş olamaz.", "error");
+        return;
       }
-    } else if (sa.error) {
-      headlineKind = "warn";
-      headlineText = `Error: ${sa.error}`;
-    }
+      if (!domain) {
+        showToast("Domain boş olamaz.", "error");
+        return;
+      }
 
-    $("saHeadline").textContent = headlineText;
-    $("saHeadline").classList.remove("good","warn","bad","neutral");
-    $("saHeadline").classList.add(headlineKind);
-  }
+      // UI: sonuçları hemen kapat (eski sonucu göstermesin)
+      const resultsEl = document.getElementById("results");
+      resultsEl.classList.remove("show");
+      document.getElementById("cards").innerHTML = "";
 
-  function pickRawMessage(payload) {
-    const r = payload?.result || {};
-    return (
-      r.raw_email ||
-      r.message_raw ||
-      r.raw ||
-      r.eml ||
-      payload?.raw_email ||
-      payload?.message_raw ||
-      payload?.raw ||
-      null
-    );
-  }
+      const btn = document.getElementById("btnAnalyze");
+      const loadingText = document.getElementById("loadingText");
+      btn.disabled = true;
+      loadingText.style.display = "inline";
 
-  function renderMessageDetails(payload) {
-    const raw = pickRawMessage(payload);
-    if (raw) {
-      $("msgRaw").textContent = String(raw);
-      $("msgPill").textContent = "available";
-      $("msgPill").classList.remove("good","warn","bad","neutral");
-      $("msgPill").classList.add("good");
-    } else {
-      $("msgRaw").textContent = "(no message data)";
-      $("msgPill").textContent = "n/a";
-      $("msgPill").classList.remove("good","warn","bad","neutral");
-      $("msgPill").classList.add("neutral");
-    }
-  }
+      const requestId = ++lastRequestId;
 
-  function renderAll(payload) {
-    const status = payload?.status || "unknown";
-    const result = payload?.result || {};
-    renderTopSummary(status, result);
-    renderIssues(result);
-    renderSpamAssassin(result);
-    renderChecks(result);
-    renderDNSBL(result);
-    renderMessageDetails(payload);
-  }
-
-  function escapeHtml(s) {
-    return String(s ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#39;");
-  }
-
-  async function refreshOnce(localRunId) {
-    if (localRunId !== runId) return;
-    const to = currentTo;
-    const signal = activeAbort?.signal;
-
-    const payload = await apiResult(to, signal);
-    if (localRunId !== runId) return;
-    if (to !== currentTo) return;
-
-    const st = payload?.status || "unknown";
-    setRightStatus(st);
-
-    if (st === "analyzed" || st === "error" || st === "expired") {
-      showProgress(false);
-      showReport();
-      renderAll(payload);
-
-      if (st === "analyzed") setStatus("Analyzed. Showing results.", "good");
-      else setStatus(`Finished with status: ${st}`, "bad");
-
-      stopPolling();
-      $("btnCheck").disabled = false;
-      $("btnCheck").textContent = "Check score";
-      return;
-    }
-
-    hideReport();
-    showProgress(true);
-    setStatus(`Waiting… (${st})`, "warn");
-  }
-
-  function startPolling(localRunId) {
-    stopPolling();
-    pollTimer = setInterval(async () => {
       try {
-        await refreshOnce(localRunId);
+        // Cache busting: querystring
+        const url = apiUrl.includes("?") ? `${apiUrl}&_ts=${Date.now()}` : `${apiUrl}?_ts=${Date.now()}`;
+
+        const payload = {
+          domain: domain,
+          sender_ip: senderIp || null,
+          raw_email: rawEmail
+        };
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          cache: "no-store"
+        });
+
+        const data = await res.json().catch(() => null);
+
+        // Eğer arada yeni istek atıldıysa eski sonucu basma
+        if (requestId !== lastRequestId) return;
+
+        if (!res.ok) {
+          const msg = data?.error || data?.message || `HTTP ${res.status}`;
+          showToast(`Hata: ${msg}`, "error");
+          return;
+        }
+
+        if (!data) {
+          showToast("Sunucudan geçersiz yanıt alındı.", "error");
+          return;
+        }
+
+        // Render + show
+        renderAll(data);
+        resultsEl.classList.add("show");
+        showToast("Kontrol tamamlandı.");
+
       } catch (e) {
-        if (localRunId !== runId) return;
-        stopPolling();
-        showProgress(false);
-        hideReport();
-        setStatus("Error: " + (e?.message || e), "bad");
-        $("btnCheck").disabled = false;
-        $("btnCheck").textContent = "Check score";
+        if (requestId !== lastRequestId) return;
+        showToast(`Bağlantı hatası: ${e}`, "error");
+      } finally {
+        if (requestId !== lastRequestId) return;
+        btn.disabled = false;
+        loadingText.style.display = "none";
       }
-    }, 2500);
-  }
-
-  async function generateAddress() {
-    runId += 1;
-    const localRunId = runId;
-
-    stopPolling();
-    cancelInFlight();
-    activeAbort = new AbortController();
-
-    hideReport();
-    showProgress(false);
-
-    $("toAddress").value = "";
-    $("btnCheck").disabled = true;
-    $("btnCheck").textContent = "Check score";
-    currentTo = null;
-
-    setStatus("Generating address…", "warn");
-    setRightStatus("—");
-
-    const addr = await apiGenerate(activeAbort.signal);
-    if (localRunId !== runId) return;
-
-    currentTo = addr;
-    $("toAddress").value = addr;
-
-    setStatus("Address ready. Send your email, then click Check score.", "good");
-    setRightStatus("pending");
-    $("btnCheck").disabled = false;
-  }
-
-  $("btnCopy").addEventListener("click", async () => {
-    const v = $("toAddress").value;
-    if (!v) return;
-    try {
-      await navigator.clipboard.writeText(v);
-      setStatus("Copied to clipboard.", "good");
-      setTimeout(() => { if (currentTo) setStatus("Address ready. Send your email, then click Check score.", "good"); }, 900);
-    } catch {
-      $("toAddress").select();
-      document.execCommand("copy");
-      setStatus("Copied.", "good");
-      setTimeout(() => { if (currentTo) setStatus("Address ready. Send your email, then click Check score.", "good"); }, 900);
     }
-  });
 
-  $("btnCheck").addEventListener("click", async () => {
-    if (!currentTo) return;
-    hideReport();
-
-    const localRunId = runId;
-
-    try {
-      cancelInFlight();
-      activeAbort = new AbortController();
-
-      $("btnCheck").disabled = true;
-      $("btnCheck").textContent = "Checking…";
-
-      setStatus("Checking for results…", "warn");
-      showProgress(true);
-
-      await refreshOnce(localRunId);
-      startPolling(localRunId);
-    } catch (e) {
-      if (localRunId !== runId) return;
-      showProgress(false);
-      hideReport();
-      setStatus("Error: " + (e?.message || e), "bad");
-      $("btnCheck").disabled = false;
-      $("btnCheck").textContent = "Check score";
+    function clearAll() {
+      document.getElementById("rawEmail").value = "";
+      document.getElementById("domain").value = "";
+      document.getElementById("senderIp").value = "";
+      document.getElementById("results").classList.remove("show");
+      document.getElementById("cards").innerHTML = "";
+      showToast("Temizlendi.");
     }
-  });
 
-  $("btnRegen").addEventListener("click", async () => {
-    try { await generateAddress(); }
-    catch (e) {
-      showProgress(false);
-      hideReport();
-      setStatus("Error: " + (e?.message || e), "bad");
-    }
-  });
+    // ---------- Events ----------
+    document.getElementById("btnAnalyze").addEventListener("click", doAnalyze);
+    document.getElementById("btnClear").addEventListener("click", clearAll);
 
-  (function init() {
-    hideReport();
-    showProgress(false);
-    setRightStatus("—");
-    generateAddress().catch(e => {
-      setStatus("Error: " + (e?.message || e), "bad");
+    // Ctrl+Enter to run
+    document.getElementById("rawEmail").addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") doAnalyze();
     });
-  })();
-</script>
+  </script>
 </body>
 </html>
