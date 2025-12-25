@@ -67,7 +67,7 @@ class Analyzer:
             header_check["status"] = "warning"
             header_check["missing_recommended"].append("List-Unsubscribe")
             self.score.minus(
-                0.02,
+                0.00,
                 "List-Unsubscribe header missing",
                 code="HDR_LIST_UNSUB_MISSING",
                 severity="low",
@@ -139,8 +139,8 @@ class Analyzer:
             body = ""
 
         base = self.score.result()
-        meta["body"] = body
 
+        meta["body"] = body
         base["meta"] = meta
         base["checks"] = checks
         base["raw_email"] = self.msg.as_string()
