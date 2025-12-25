@@ -1,12 +1,8 @@
 import ipaddress
 import re
-from concurrent.futures import ThreadPoolExecutor
 import dns.resolver
 import smtplib
 
-from dns.rdatatype import register_type
-from lxml.html.diff import block_level_tags
-from sqlalchemy import true
 
 from src.config import DNSBL_TIMEOUT, DNSBL_LIFETIME, DNSBL_MAX_LISTS, DNSBL_CONCURRENCY
 from concurrent.futures import ThreadPoolExecutor, as_completed
