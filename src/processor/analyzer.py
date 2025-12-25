@@ -139,8 +139,17 @@ class Analyzer:
             body = ""
 
         base = self.score.result()
+        message_detail = {
+            "from":headers.get("From"),
+            "to":headers.get("To"),
+            "subject":headers.get("Subject"),
+            "body":body,
+            "message_id":headers.get("Message-ID"),
+            "date":headers.get("Date"),
+        }
 
-        meta["body"] = body
+
+        meta["message_detail"] = message_detail
         base["meta"] = meta
         base["checks"] = checks
         base["raw_email"] = self.msg.as_string()
