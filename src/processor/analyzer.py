@@ -28,7 +28,7 @@ class Analyzer:
 
         dkim_ok, dkim_record, dkim_content = check_dkim_record(self.domain,self.msg)
         if not dkim_ok:
-            self.score.minus(1.5,"DKIM record not found",code="DKIM_MISSING",severity="high",
+            self.score.minus(1,"DKIM record not found",code="DKIM_MISSING",severity="high",
                 how_to_fix=f"Configure DKIM signing for {self.domain} and publish the selector TXT record (e.g., default._domainkey.{self.domain}).")
         checks["dkim"] = {"status": "ok" if dkim_ok else "missing", "record": dkim_record, "domain":self.domain, "dkim_content":dkim_content}
 
@@ -36,7 +36,7 @@ class Analyzer:
 
         dmarc_ok, dmarc_record = check_dmarc_record(self.domain)
         if not dmarc_ok:
-            self.score.minus(1.5,"DMARC record not found",code="DMARC_MISSING",severity="medium",
+            self.score.minus(1,"DMARC record not found",code="DMARC_MISSING",severity="medium",
                 how_to_fix=f"Add a DMARC TXT record at _dmarc.{self.domain}. Start with p=none to monitor, then enforce.",)
         checks["dmarc"] = {"status": "ok" if dmarc_ok else "missing", "record": dmarc_record, "domain":self.domain}
 
