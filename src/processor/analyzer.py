@@ -81,6 +81,12 @@ class Analyzer:
 
         if self.sender_ip:
             rdns = check_rdns(self.sender_ip)
+            if rdns.get("success"):
+                rdns["status"] = "ok"
+            else:
+                rdns["status"] = "missing"
+
+            rdns["skipped"] = False
             checks["rdns"] = rdns
             if not rdns.get("success"):
                 self.score.minus(0.4, "Reverse DNS not matching", code="RDNS_FAIL", severity="low")
@@ -92,7 +98,7 @@ class Analyzer:
             if listed_on:
                 self.score.minus(0.5,"IP is listed in blacklists: " + ", ".join(listed_on),code="DNSBL_LISTED",severity="high",details=f"Listed on: {', '.join(listed_on)}",how_to_fix="Request delisting from the DNSBL provider(s) or change sending IP.",)
         else:
-            checks["rdns"] = {"success": False, "hostname": None, "skipped": True}
+            checks["rdns"] = {"success": None,"hostname": None,"status": "unknown","skipped": True,            }
             checks["blacklists"] = {"checked": 0, "results": {}, "summary": {}, "skipped": True}
 
 
