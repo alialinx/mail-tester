@@ -56,7 +56,7 @@ def generate_random(db=Depends(get_db)):
         "to_address": to_address,
         "status": "pending",
         "created_at": now,
-        "expires_at": now + timedelta(hours=24),
+        "expires_at": now + timedelta(hours=1),
         "receiver_at": None,
         "analysis_id": None,
         "last_error": None
