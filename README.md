@@ -1,5 +1,7 @@
 # Mail Tester
 
+https://mail-tester.alialin.me
+
 Mail Tester is a simple service that checks the quality and deliverability of outgoing emails.
 
 Users send an email to a temporary test address.  
