@@ -33,3 +33,9 @@ DNSBL_TIMEOUT = float(os.getenv("DNSBL_TIMEOUT", "2.0"))
 DNSBL_LIFETIME = float(os.getenv("DNSBL_LIFETIME", "2.0"))
 DNSBL_MAX_LISTS = int(os.getenv("DNSBL_MAX_LISTS", "20"))
 DNSBL_CONCURRENCY = int(os.getenv("DNSBL_CONCURRENCY", "10"))
+
+
+
+TOKEN_EXPIRE_MINUTES = int(os.getenv("TOKEN_EXPIRE_MINUTES"))
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
