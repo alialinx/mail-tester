@@ -40,22 +40,21 @@ def token_save(token: str, user_id: str, expire_at: datetime, db=Depends(get_db)
     return {"success": True}
 
 
-def check_token(token: str, db=Depends(get_db)):
-    doc = db.tokens.find_one({"token": token})
-
-    if not doc:
-        raise HTTPException(status_code=404, detail="Token not found")
-
-    expire_at = doc.get("expire_at")
-
-    if not expire_at:
-        raise HTTPException(status_code=500, detail="Token configuration error")
-
+def check_token(token: str, db):
     now = datetime.now(timezone.utc)
-    if expire_at < now:
+
+    token_doc = db.tokens.find_one({"token": token})
+    if not token_doc:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    expire_at = ensure_utc_aware(token_doc.get("expire_at"))
+    if not expire_at:
+        raise HTTPException(status_code=401, detail="Invalid token expiry")
+
+    if expire_at <= now:
         raise HTTPException(status_code=401, detail="Token expired")
 
-    return doc
+    return token_doc
 
 
 def current_user(token: str = Depends(oauth2_scheme), db=Depends(get_db)):
