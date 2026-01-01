@@ -216,6 +216,25 @@ systemctl reload postfix
 ```
 
 
+## Database
+
+### MongoDB Indexes (Required)
+
+This project uses a TTL index to automatically remove expired test email records from `test_emails`.
+Make sure to create the following indexes after setting up MongoDB:
+
+```bash
+mongosh
+
+use <your_database_name>
+
+// Auto-delete expired test email records (expires_at is set by the API)
+db.test_emails.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0 })
+
+// Ensure generated addresses are unique
+db.test_emails.createIndex({ to_address: 1 }, { unique: true })
+```
+
 
 ## Usage Flow
 
