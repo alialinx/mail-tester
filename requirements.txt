@@ -10,3 +10,8 @@ celery[redis]
 redis
 passlib==1.7.4
 bcrypt==3.2.2
+
+PyJWT==2.8.0
+
+python-multipart
+pydantic
