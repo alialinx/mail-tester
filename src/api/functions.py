@@ -11,7 +11,6 @@ from src.db.db import get_db
 
 
 def system_log(db, event: str, level: str = "INFO", user_id=None, session_id: str = None, request_info: dict = None, payload: dict = None, error: str = None):
-
     f = sys._getframe(1)
 
     caller = {
@@ -54,6 +53,7 @@ def hash_password(password: str) -> str:
 
 oauth2_optional = OAuth2PasswordBearer(tokenUrl="/login", auto_error=False)
 
+
 def optional_current_user(token: str = Depends(oauth2_optional), db=Depends(get_db)):
     if not token:
         return None
@@ -61,7 +61,6 @@ def optional_current_user(token: str = Depends(oauth2_optional), db=Depends(get_
 
 
 def utc_tomorrow_start(current_time: datetime | None = None) -> datetime:
-
     if current_time is None:
         current_time = datetime.now(timezone.utc)
 
@@ -70,13 +69,3 @@ def utc_tomorrow_start(current_time: datetime | None = None) -> datetime:
 
     tomorrow = current_time + timedelta(days=1)
     return tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
-
-
-def ensure_utc_aware(dt):
-    if dt is None:
-        return None
-    if isinstance(dt, datetime):
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
-    return None
