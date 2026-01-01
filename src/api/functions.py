@@ -60,16 +60,6 @@ def optional_current_user(token: str = Depends(oauth2_optional), db=Depends(get_
     return current_user(token=token, db=db)
 
 
-
-def ensure_utc_aware(dt: datetime | None) -> datetime | None:
-    if dt is None:
-        return None
-    if isinstance(dt, datetime):
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
-    return None
-
 def utc_tomorrow_start(current_time: datetime | None = None) -> datetime:
 
     if current_time is None:
@@ -80,3 +70,13 @@ def utc_tomorrow_start(current_time: datetime | None = None) -> datetime:
 
     tomorrow = current_time + timedelta(days=1)
     return tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def ensure_utc_aware(dt):
+    if dt is None:
+        return None
+    if isinstance(dt, datetime):
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    return None
