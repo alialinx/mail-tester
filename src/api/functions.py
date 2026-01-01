@@ -1,9 +1,13 @@
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-from fastapi import Request
+from fastapi import Request, Depends
+from fastapi.security import OAuth2PasswordBearer
 from passlib.handlers.sha2_crypt import sha256_crypt
+
+from src.api.token import current_user
+from src.db.db import get_db
 
 
 def system_log(db, event: str, level: str = "INFO", user_id=None, session_id: str = None, request_info: dict = None, payload: dict = None, error: str = None):
@@ -46,3 +50,25 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def hash_password(password: str) -> str:
     return sha256_crypt.hash(password)
+
+
+oauth2_optional = OAuth2PasswordBearer(tokenUrl="/login", auto_error=False)
+
+def optional_current_user(token: str = Depends(oauth2_optional), db=Depends(get_db)):
+    if not token:
+        return None
+    return current_user(token=token, db=db)
+
+
+
+
+def utc_tomorrow_start(current_time: datetime | None = None) -> datetime:
+
+    if current_time is None:
+        current_time = datetime.now(timezone.utc)
+
+    if current_time.tzinfo is None:
+        current_time = current_time.replace(tzinfo=timezone.utc)
+
+    tomorrow = current_time + timedelta(days=1)
+    return tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
