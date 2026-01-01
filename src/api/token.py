@@ -87,7 +87,7 @@ def get_active_or_new_token(user: dict, db=Depends(get_db)):
     existing = db.tokens.find_one({"user_id": user_id}, {"token": 1, "expire_at": 1})
 
     if existing:
-        expire_at = existing.get("expire_at")
+        expire_at = ensure_utc_aware(existing.get("expire_at"))
         token = existing.get("token")
         if token and expire_at and expire_at > now:
             return token, expire_at
