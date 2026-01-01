@@ -3,6 +3,8 @@ from datetime import datetime, timezone, timedelta
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+
+from src.api.functions import ensure_utc_aware
 from src.config import TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from src.db.db import get_db
 
