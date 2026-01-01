@@ -80,9 +80,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(),db=Depends(get_db), r
 
     system_log(db,"login",user_id=user["_id"],request_info=req_info )
 
-    db.users.update_one({"email": username}, {"$set": {"last_login_at": now}, "token_expires_at":expires_at.isoformat()})
+    db.users.update_one(
+        {"email": username},
+        {"$set": {
+            "last_login_at": now,
+            "token_expires_at": expires_at,
+        }}
+    )
 
-    return {"success":True, "message":"login successfull", "access_token":token, "token_type":"bearer", "expires_at":expires_at.isoformat()}
+    return {"success":True, "message":"login successfull", "access_token":token, "token_type":"bearer", "expires_at":expires_at}
 
 
 @router.get("/logout", summary="Logout a user")
