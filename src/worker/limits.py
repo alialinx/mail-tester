@@ -1,6 +1,8 @@
 from datetime import datetime, timezone, timedelta
+
 from bson import ObjectId
 
+from src.api.utils.time import ensure_utc_aware
 
 
 def get_utc_now() -> datetime:
@@ -15,10 +17,7 @@ def get_utc_tomorrow_start(current_time: datetime) -> datetime:
     return get_utc_day_start(current_time) + timedelta(days=1)
 
 
-
-
 def get_test_email_context(db, to_address: str) -> dict:
-
     return db.test_emails.find_one(
         {"to_address": to_address},
         {
@@ -30,8 +29,7 @@ def get_test_email_context(db, to_address: str) -> dict:
     )
 
 
-def reset_user_daily_quota_if_needed(db,user_id: str,current_time: datetime,) -> int:
-
+def reset_user_daily_quota_if_needed(db, user_id: str, current_time: datetime, ) -> int:
     user_document = db.users.find_one(
         {"_id": ObjectId(user_id)},
         {"quota": 1}
@@ -43,9 +41,10 @@ def reset_user_daily_quota_if_needed(db,user_id: str,current_time: datetime,) ->
     )
 
     daily_used = int(analyze_quota.get("daily_used", 0))
-    reset_at = analyze_quota.get("reset_at")
+    reset_at = ensure_utc_aware(analyze_quota.get("reset_at"))
 
-    if not reset_at or reset_at <= current_time:
+    if (reset_at is None) or (reset_at <= current_time):
+
         db.users.update_one(
             {"_id": ObjectId(user_id)},
             {"$set": {
@@ -59,16 +58,13 @@ def reset_user_daily_quota_if_needed(db,user_id: str,current_time: datetime,) ->
 
 
 def consume_user_daily_quota(db, user_id: str) -> None:
-
     db.users.update_one(
         {"_id": ObjectId(user_id)},
         {"$inc": {"quota.analyze.daily_used": 1}}
     )
 
 
-
-def get_anonymous_daily_usage(db,client_ip: str,current_time: datetime,) -> int:
-
+def get_anonymous_daily_usage(db, client_ip: str, current_time: datetime, ) -> int:
     return db.test_emails.count_documents({
         "created_ip": client_ip,
         "analysis_started_at": {
@@ -77,9 +73,7 @@ def get_anonymous_daily_usage(db,client_ip: str,current_time: datetime,) -> int:
     })
 
 
-
 def can_start_email_analysis(db, email_context: dict) -> bool:
-
     current_time = get_utc_now()
 
     if email_context.get("analysis_started_at"):
@@ -117,7 +111,6 @@ def can_start_email_analysis(db, email_context: dict) -> bool:
 
 
 def mark_email_analysis_started(db, to_address: str) -> None:
-
     db.test_emails.update_one(
         {"to_address": to_address},
         {"$set": {"analysis_started_at": get_utc_now()}}
