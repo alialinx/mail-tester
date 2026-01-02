@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 
-from src.api.functions import get_request_info, hash_password, system_log, verify_password, utc_tomorrow_start
+from src.api.functions import get_request_info, hash_password, system_log, verify_password, utc_tomorrow_start, is_valid_email
 from src.api.schema import UserRegister
 from src.api.token import get_active_or_new_token
 from src.db.db import get_db
@@ -18,6 +18,10 @@ def register(info:UserRegister, db=Depends(get_db), req_info=Depends(get_request
     email = (info.email or "").strip().lower()
     if not email:
         raise HTTPException(status_code=400, detail="Email is required")
+
+    if not is_valid_email(email):
+        raise HTTPException(status_code=400, detail="Invalid email format")
+
 
     exists = db.users.find_one({"email": email})
     if exists:

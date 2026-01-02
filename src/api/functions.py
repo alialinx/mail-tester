@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from datetime import datetime, timezone, timedelta
 
@@ -81,3 +82,14 @@ def utc_tomorrow_start(current_time: datetime | None = None) -> datetime:
 
     tomorrow = current_time + timedelta(days=1)
     return tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+EMAIL_REGEX = re.compile(
+    r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+"
+    r"@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*$"
+)
+
+def is_valid_email(email: str) -> bool:
+    if not email:
+        return False
+    return bool(EMAIL_REGEX.match(email))
