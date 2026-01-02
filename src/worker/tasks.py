@@ -6,7 +6,7 @@ from src.imap.imap import get_email_from_imap
 from src.processor.analyzer import Analyzer
 from src.processor.service import get_sender_ip
 from src.worker.celery_app import celery_app
-from src.worker.limits import get_test_email_context, can_start_email_analysis, mark_email_analysis_started
+from src.worker.limits import get_test_email_context, can_start_email_analysis, mark_email_analysis_started, try_consume_quota_once
 from src.worker.spamassassin_client import spamd_check
 
 
@@ -25,17 +25,12 @@ def pull_and_analyze(self, to_address: str):
 
         email_context = get_test_email_context(db, to_address)
 
-        if not can_start_email_analysis(db, email_context):
+        if not try_consume_quota_once(db, email_context):
             db.test_emails.update_one(
                 {"to_address": to_address},
-                {"$set": {
-                    "status": "error",
-                    "last_error": "daily_analyze_limit_exceeded"
-                }}
+                {"$set": {"status": "error", "last_error": "daily_analyze_limit_exceeded"}}
             )
             return None
-
-        mark_email_analysis_started(db, to_address)
 
         db.test_emails.update_one(
             {"to_address": to_address},

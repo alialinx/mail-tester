@@ -38,8 +38,20 @@ def system_log(db, event: str, level: str = "INFO", user_id=None, session_id: st
 
 
 def get_request_info(request: Request):
-    client_ip = request.client.host if request else "unknown"
-    user_agent = request.headers.get("User-Agent") if request else "unknown"
+    if not request:
+        return {"ip": "unknown", "user_agent": "unknown"}
+
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        client_ip = xff.split(",")[0].strip()
+    else:
+        x_real = request.headers.get("x-real-ip")
+        if x_real:
+            client_ip = x_real.strip()
+        else:
+            client_ip = request.client.host if request.client else "unknown"
+
+    user_agent = request.headers.get("user-agent", "unknown")
     return {"ip": client_ip, "user_agent": user_agent}
 
 
