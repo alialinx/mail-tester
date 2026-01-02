@@ -72,13 +72,21 @@ def pull_and_analyze(self, to_address: str):
 
         inserted = db.analyses.insert_one(result)
 
+        now = datetime.now(timezone.utc)
+
         db.test_emails.update_one(
             {"to_address": to_address},
-            {"$set": {
-                "status": "analyzed",
-                "analysis_id": str(inserted.inserted_id),
-                "last_error": None
-            }}
+            {
+                "$set": {
+                    "status": "analyzed",
+                    "analysis_id": str(inserted.inserted_id),
+                    "analyzed_at": now,
+                    "last_error": None
+                },
+                "$unset": {
+                    "expires_at": ""
+                }
+            }
         )
 
         return None

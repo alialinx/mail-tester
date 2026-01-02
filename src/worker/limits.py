@@ -62,14 +62,12 @@ def consume_user_daily_quota(db, user_id: str) -> None:
         {"$inc": {"quota.analyze.daily_used": 1}}
     )
 
-def get_anonymous_daily_usage(db, client_ip: str, current_time: datetime, ) -> int:
+def get_anonymous_daily_usage(db, client_ip: str, current_time: datetime) -> int:
     return db.test_emails.count_documents({
         "created_ip": client_ip,
-        "analysis_started_at": {
-            "$gte": get_utc_day_start(current_time)
-        }
+        "status": "analyzed",
+        "analyzed_at": {"$gte": get_utc_day_start(current_time)}
     })
-
 
 def try_consume_quota_once(db, email_context: dict) -> bool:
 
