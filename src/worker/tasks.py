@@ -25,19 +25,22 @@ def pull_and_analyze(self, to_address: str):
 
         email_context = get_test_email_context(db, to_address)
 
-        if not try_consume_quota_once(db, email_context):
-            db.test_emails.update_one(
-                {"to_address": to_address},
-                {"$set": {"status": "error", "last_error": "daily_analyze_limit_exceeded"}}
-            )
+        if not email_context:
             return None
+
+        allowed = try_consume_quota_once(db=db,to_address=to_address,email_context=email_context,)
+
+        if not allowed:
+            return None
+
+        now = datetime.now(timezone.utc)
 
         db.test_emails.update_one(
             {"to_address": to_address},
             {"$set": {
                 "status": "processing",
-                "receiver_at": datetime.now(timezone.utc),
-                "last_error": None
+                "receiver_at": now,
+                "last_error": None,
             }}
         )
 

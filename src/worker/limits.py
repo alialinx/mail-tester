@@ -5,11 +5,11 @@ from bson import ObjectId
 from src.api.utils.time import ensure_utc_aware
 
 # --- Time helpers ---
-def get_utc_now() -> datetime:
+def utc_now():
     return datetime.now(timezone.utc)
 
-def get_utc_day_start(current_time: datetime) -> datetime:
-    return current_time.replace(hour=0, minute=0, second=0, microsecond=0)
+def utc_day_start(dt: datetime) -> datetime:
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
 def get_utc_tomorrow_start(current_time: datetime) -> datetime:
     return get_utc_day_start(current_time) + timedelta(days=1)
@@ -66,69 +66,67 @@ def get_anonymous_daily_usage(db, client_ip: str, current_time: datetime) -> int
     return db.test_emails.count_documents({
         "created_ip": client_ip,
         "status": "analyzed",
-        "analyzed_at": {"$gte": get_utc_day_start(current_time)}
+        "analyzed_at": {"$gte": utc_day_start(current_time)}
     })
 
-def try_consume_quota_once(db, email_context: dict) -> bool:
+def try_consume_quota_once(db, to_address: str, email_context: dict) -> bool:
+    now = utc_now()
 
-    now = get_utc_now()
-    to_address = email_context["to_address"]
-
-
-    res = db.test_emails.update_one(
-        {"to_address": to_address, "analysis_started_at": {"$exists": False}},
+    claimed = db.test_emails.update_one(
+        {"to_address": to_address, "analysis_started_at": None},
         {"$set": {"analysis_started_at": now}}
     )
 
-
-    if res.modified_count == 0:
+    if claimed.modified_count == 0:
         return True
 
     if email_context.get("owner_user_id"):
         user_id = email_context["owner_user_id"]
 
-        quota_doc = db.users.find_one(
-            {"_id": ObjectId(user_id)},
-            {"quota.analyze.daily_limit": 1, "quota.analyze.daily_used": 1, "quota.analyze.reset_at": 1}
-        ) or {}
+        user = db.users.find_one({"_id": ObjectId(user_id)}, {"quota": 1}) or {}
+        q = (user.get("quota") or {}).get("analyze", {}) or {}
+        daily_limit = int(q.get("daily_limit", 10))
+        daily_used = int(q.get("daily_used", 0))
+        reset_at = q.get("reset_at")
 
-        analyze_quota = ((quota_doc.get("quota") or {}).get("analyze", {}))
-        daily_limit = int(analyze_quota.get("daily_limit", 10))
-        reset_at = ensure_utc_aware(analyze_quota.get("reset_at"))
+
+        if reset_at and reset_at.tzinfo is None:
+            reset_at = reset_at.replace(tzinfo=timezone.utc)
 
         if (reset_at is None) or (reset_at <= now):
             daily_used = 0
-            reset_at = get_utc_tomorrow_start(now)
+            tomorrow = utc_day_start(now) + timedelta(days=1)
             db.users.update_one(
                 {"_id": ObjectId(user_id)},
-                {"$set": {
-                    "quota.analyze.daily_used": 0,
-                    "quota.analyze.reset_at": reset_at,
-                }}
+                {"$set": {"quota.analyze.daily_used": 0, "quota.analyze.reset_at": tomorrow}}
             )
 
         if daily_used >= daily_limit:
+
             db.test_emails.update_one(
                 {"to_address": to_address},
-                {"$unset": {"analysis_started_at": ""}}
+                {"$set": {"status": "error", "last_error": "daily_analyze_limit_exceeded"}}
             )
             return False
 
-        db.users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$inc": {"quota.analyze.daily_used": 1}}
-        )
+        db.users.update_one({"_id": ObjectId(user_id)}, {"$inc": {"quota.analyze.daily_used": 1}})
         return True
 
-    client_ip = email_context.get("created_ip")
-    daily_limit = 5
-    daily_used = get_anonymous_daily_usage(db=db, client_ip=client_ip, current_time=now)
+    else:
+        client_ip = email_context.get("created_ip") or "unknown"
+        daily_limit = 5
 
-    if daily_used >= daily_limit:
-        db.test_emails.update_one(
-            {"to_address": to_address},
-            {"$unset": {"analysis_started_at": ""}}
-        )
-        return False
+        used = db.test_emails.count_documents({
+            "created_ip": client_ip,
+            "status": "analyzed",
+            "analyzed_at": {"$gte": utc_day_start(now)}
+        })
 
-    return True
+        if used >= daily_limit:
+            db.test_emails.update_one(
+                {"to_address": to_address},
+                {"$set": {"status": "error", "last_error": "daily_analyze_limit_exceeded"}}
+            )
+            return False
+
+        return True
