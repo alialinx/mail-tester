@@ -213,6 +213,12 @@ Edit the Postfix virtual alias file:
 
 postmap /etc/postfix/virtual_alias
 systemctl reload postfix
+
+
+/etc/postfix/main.cf
+
+virtual_alias_maps = hash:/etc/postfix/virtual_alias
+
 ```
 
 
