@@ -94,14 +94,28 @@ def check_dkim_record(domain: str, msg_raw: str):
     return True, dkim_record, clean_dkim_content
 
 
-def check_dmarc_record(domain: str):
-    dmarc_domain = f"_dmarc.{domain}"
-    records = dns.resolver.resolve(dmarc_domain, "TXT")
+def _txt_to_str(rdata) -> str:
+    try:
+        return b"".join(rdata.strings).decode("utf-8", errors="replace")
+    except Exception:
+        return str(rdata).strip('"')
 
-    dmarc = None
-    for r in records:
-        dmarc = r.to_text()
-    return True, dmarc
+def check_dmarc_record(domain: str):
+    dmarc_domain = f"_dmarc.{domain}".strip(".")
+
+    try:
+        answers = dns.resolver.resolve(dmarc_domain, "TXT")
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers, dns.exception.Timeout):
+
+        return False, None
+    except Exception:
+        return False, None
+
+
+    records = [_txt_to_str(r) for r in answers]
+    dmarc = next((t for t in records if "v=DMARC1" in t), None)
+
+    return (dmarc is not None), dmarc
 
 
 def check_rdns(ip: str) -> dict:
