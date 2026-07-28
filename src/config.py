@@ -1,8 +1,5 @@
 import os
-from urllib.parse import quote_plus
-
 from dotenv import load_dotenv
-from cryptography.fernet import Fernet
 
 load_dotenv()
 
@@ -27,6 +24,15 @@ INGEST_LMTP_PORT = int(os.getenv("INGEST_LMTP_PORT", "2400"))
 INGEST_MAP_PORT = int(os.getenv("INGEST_MAP_PORT", "2500"))
 MESSAGE_SIZE_LIMIT = int(os.getenv("MESSAGE_SIZE_LIMIT", "26214400"))
 TEST_ADDRESS_TTL_MINUTES = int(os.getenv("TEST_ADDRESS_TTL_MINUTES", "10"))
+
+ANON_DAILY_LIMIT = int(os.getenv("ANON_DAILY_LIMIT", "5"))
+USER_DAILY_LIMIT = int(os.getenv("USER_DAILY_LIMIT", "25"))
+
+GENERATE_RATE_LIMIT = int(os.getenv("GENERATE_RATE_LIMIT", "10"))
+GENERATE_RATE_WINDOW = int(os.getenv("GENERATE_RATE_WINDOW", "60"))
+AUTH_RATE_LIMIT = int(os.getenv("AUTH_RATE_LIMIT", "10"))
+AUTH_RATE_WINDOW = int(os.getenv("AUTH_RATE_WINDOW", "300"))
+PASSWORD_MIN_LENGTH = int(os.getenv("PASSWORD_MIN_LENGTH", "8"))
 
 IMAP_HOST = os.getenv("IMAP_HOST")
 IMAP_PORT = os.getenv("IMAP_PORT")

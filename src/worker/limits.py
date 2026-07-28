@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 
 from src.api.utils.time import ensure_utc_aware
+from src.config import ANON_DAILY_LIMIT, USER_DAILY_LIMIT
 
 def utc_now():
     return datetime.now(timezone.utc)
@@ -81,7 +82,7 @@ def try_consume_quota_once(db, to_address: str, email_context: dict) -> bool:
 
         user = db.users.find_one({"_id": ObjectId(user_id)}, {"quota": 1}) or {}
         q = (user.get("quota") or {}).get("analyze", {}) or {}
-        daily_limit = int(q.get("daily_limit", 10))
+        daily_limit = int(q.get("daily_limit", USER_DAILY_LIMIT))
         daily_used = int(q.get("daily_used", 0))
         reset_at = q.get("reset_at")
 
@@ -110,7 +111,7 @@ def try_consume_quota_once(db, to_address: str, email_context: dict) -> bool:
 
     else:
         client_ip = email_context.get("created_ip") or "unknown"
-        daily_limit = 5
+        daily_limit = ANON_DAILY_LIMIT
 
         used = db.test_emails.count_documents({
             "created_ip": client_ip,
@@ -126,3 +127,28 @@ def try_consume_quota_once(db, to_address: str, email_context: dict) -> bool:
             return False
 
         return True
+
+
+def get_quota_state(db, owner_user_id: str = None, client_ip: str = None) -> dict:
+    now = utc_now()
+
+    if owner_user_id:
+        user = db.users.find_one({"_id": ObjectId(owner_user_id)}, {"quota": 1}) or {}
+        quota = (user.get("quota") or {}).get("analyze", {}) or {}
+
+        limit = int(quota.get("daily_limit", USER_DAILY_LIMIT))
+        used = int(quota.get("daily_used", 0))
+        reset_at = ensure_utc_aware(quota.get("reset_at"))
+
+        if (reset_at is None) or (reset_at <= now):
+            used = 0
+            reset_at = get_utc_tomorrow_start(now)
+
+        return {"scope": "user", "limit": limit, "used": used,
+                "remaining": max(0, limit - used), "reset_at": reset_at}
+
+    used = get_anonymous_daily_usage(db, client_ip or "unknown", now)
+
+    return {"scope": "anonymous", "limit": ANON_DAILY_LIMIT, "used": used,
+            "remaining": max(0, ANON_DAILY_LIMIT - used),
+            "reset_at": get_utc_tomorrow_start(now)}
