@@ -7,11 +7,19 @@ import smtplib
 from src.config import DNSBL_TIMEOUT, DNSBL_LIFETIME, DNSBL_MAX_LISTS, DNSBL_CONCURRENCY
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def check_spf_record(domain: str) -> bool:
-    records = dns.resolver.resolve(domain, "TXT")
+def check_spf_record(domain: str):
+    try:
+        records = dns.resolver.resolve(domain, "TXT")
+    except Exception:
+        return False, []
+
+    # Domainde başka TXT kayıtları da olabilir, sadece v=spf1 ile başlayanı sayıyoruz
     spf_list = []
     for r in records:
-        spf_list.append(r.to_text())
+        record = _txt_to_str(r)
+        if record.lower().startswith("v=spf1"):
+            spf_list.append(record)
+
     if spf_list != []:
         return True, spf_list
     else:
@@ -159,7 +167,7 @@ DNSBL_LISTS = [
 
 def check_blacklists(ip: str) -> dict:
     if not ip:
-        return {"checked": 0, "results": {}, "summary": {"listed": 0, "not_listed": 0, "timeout": 0, "error": 0}}
+        return {"checked": 0, "results": {}, "summary": {"listed": 0, "not_listed": 0, "timeout": 0, "blocked": 0, "error": 0}}
 
     reversed_ip = ".".join(ip.split(".")[::-1])
 
@@ -173,7 +181,11 @@ def check_blacklists(ip: str) -> dict:
     def query_one(dnsbl: str):
         q = f"{reversed_ip}.{dnsbl}"
         try:
-            resolver.resolve(q, "A")
+            answer = resolver.resolve(q, "A")
+            # 127.255.255.x listeleme değil, "sorgun reddedildi" cevabıdır (public resolver kullanınca dönüyor)
+            for rdata in answer:
+                if str(rdata.address).startswith("127.255.255."):
+                    return dnsbl, "blocked"
             return dnsbl, "listed"
         except dns.resolver.NXDOMAIN:
             return dnsbl, "not_listed"
@@ -188,7 +200,7 @@ def check_blacklists(ip: str) -> dict:
             dnsbl, status = fut.result()
             results[dnsbl] = status
 
-    summary = {"listed": 0, "not_listed": 0, "timeout": 0, "error": 0}
+    summary = {"listed": 0, "not_listed": 0, "timeout": 0, "blocked": 0, "error": 0}
     for st in results.values():
         summary[st] += 1
 
