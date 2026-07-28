@@ -6,6 +6,7 @@ import gridfs
 from bson import ObjectId
 from celery.exceptions import Retry
 
+from src.db.cache import publish_status
 from src.db.db import get_db
 from src.imap.imap import get_email_from_imap
 from src.processor.analyzer import Analyzer
@@ -140,6 +141,7 @@ def analyze_received_mail(self, mail_event_id: str):
                 "last_error": None,
             }}
         )
+        publish_status(to_address, "processing")
 
         fs = gridfs.GridFS(db, collection="raw_mails")
         raw = fs.get(ObjectId(event["raw_id"])).read()
@@ -156,15 +158,15 @@ def analyze_received_mail(self, mail_event_id: str):
 
         result["spamassassin"] = result["checks"]["spamassassin"]
         result["connection"] = connection
-        result["meta"] = {
+
+        # Analyzer meta içine message_detail koyuyor, ezmeyip üstüne ekliyoruz
+        result["meta"].update({
             "to_address": to_address,
             "received_at": event["received_at"].isoformat(),
             "sender_domain": domain,
             "sender_ip": sender_ip,
             "envelope_from": event.get("mail_from"),
-            "message_id": msg.get("Message-ID"),
-            "subject": msg.get("Subject"),
-        }
+        })
         result["owner"] = {
             "type": "user" if email_context.get("owner_user_id") else "anonymous",
             "user_id": email_context.get("owner_user_id"),
@@ -187,6 +189,7 @@ def analyze_received_mail(self, mail_event_id: str):
                 }
             }
         )
+        publish_status(to_address, "analyzed")
 
         return None
 
@@ -198,4 +201,5 @@ def analyze_received_mail(self, mail_event_id: str):
                 "last_error": repr(e)
             }}
         )
+        publish_status(to_address, "error")
         raise

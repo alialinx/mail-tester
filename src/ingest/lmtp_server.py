@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import gridfs
 
 from src.config import MAIL_DOMAIN, MESSAGE_SIZE_LIMIT
-from src.db.cache import address_key, get_cache
+from src.db.cache import address_key, get_cache, publish_status
 from src.db.db import get_db
 from src.ingest.connection import get_connection_info
 
@@ -45,6 +45,8 @@ def store_message(to_address: str, mail_from: str, raw: bytes) -> str:
 
     # Adres tek kullanımlık: aynı adrese ikinci mail artık RCPT aşamasında reddedilir
     get_cache().delete(address_key(to_address))
+
+    publish_status(to_address, "received")
 
     return str(inserted.inserted_id)
 
