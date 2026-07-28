@@ -1,16 +1,22 @@
 from datetime import datetime, timezone, timedelta
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Request
 
 from src.api.functions import get_request_info, optional_current_user
-from src.config import TEST_ADDRESS_TTL_MINUTES
+from src.api.rate_limit import enforce
+from src.config import GENERATE_RATE_LIMIT, GENERATE_RATE_WINDOW, TEST_ADDRESS_TTL_MINUTES
 from src.db.cache import address_key, get_cache
 from src.db.db import get_db
 from src.processor.generator import generate_random_email
+from src.worker.limits import get_quota_state
 
 router = APIRouter()
+
+
+def owner_of(current_user) -> str:
+    return str(current_user["user_id"]) if current_user else None
 
 
 @router.get("/debug/ip")
@@ -22,14 +28,38 @@ def debug_ip(request: Request):
     }
 
 
+@router.get("/limits", tags=["Generate"])
+def get_limits(db=Depends(get_db), req_info=Depends(get_request_info), current_user=Depends(optional_current_user)):
+    quota = get_quota_state(db, owner_of(current_user), req_info.get("ip"))
+
+    return {
+        "scope": quota["scope"],
+        "limit": quota["limit"],
+        "used": quota["used"],
+        "remaining": quota["remaining"],
+        "reset_at": quota["reset_at"],
+        "address_ttl_seconds": TEST_ADDRESS_TTL_MINUTES * 60,
+    }
+
+
 @router.post("/generate", tags=["Generate"])
 def generate_random(db=Depends(get_db), req_info=Depends(get_request_info), current_user=Depends(optional_current_user), ):
-    to_address = generate_random_email()
+    created_ip = req_info.get("ip")
+    owner_user_id = owner_of(current_user)
+
+    enforce("generate", owner_user_id or created_ip, GENERATE_RATE_LIMIT, GENERATE_RATE_WINDOW)
+
+    quota = get_quota_state(db, owner_user_id, created_ip)
+
+    if quota["remaining"] <= 0:
+        raise HTTPException(
+            status_code=429,
+            detail="Daily test limit reached",
+            headers={"X-Quota-Limit": str(quota["limit"]), "X-Quota-Used": str(quota["used"])},
+        )
 
     now = datetime.now(timezone.utc)
-
-    created_ip = req_info.get("ip")
-    owner_user_id = (str(current_user["user_id"]) if current_user else None)
+    to_address = generate_random_email()
 
     query = {"status": "pending", "expires_at": {"$gt": now}, }
 
@@ -65,7 +95,18 @@ def generate_random(db=Depends(get_db), req_info=Depends(get_request_info), curr
 
     cache.set(address_key(to_address), "1", ex=TEST_ADDRESS_TTL_MINUTES * 60)
 
-    return {"result": to_address, "expires_at": expires_at, "expires_in": TEST_ADDRESS_TTL_MINUTES * 60}
+    return {
+        "result": to_address,
+        "expires_at": expires_at,
+        "expires_in": TEST_ADDRESS_TTL_MINUTES * 60,
+        "limits": {
+            "scope": quota["scope"],
+            "limit": quota["limit"],
+            "used": quota["used"],
+            "remaining": quota["remaining"],
+            "reset_at": quota["reset_at"],
+        },
+    }
 
 
 @router.get("/result/{to_address}", tags=["result"])
@@ -85,7 +126,7 @@ def get_result(to_address: str, db=Depends(get_db)):
 
     status = email["status"]
     if status != "analyzed":
-        return {"status": status, }
+        return {"status": status, "last_error": email.get("last_error")}
 
     analysis = db.analyses.find_one({"_id": ObjectId(email["analysis_id"])})
 
