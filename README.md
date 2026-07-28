@@ -86,6 +86,11 @@ Each service has a different lifecycle, so they are kept apart on purpose:
 `api` and `worker` share one image and differ only by their command, so the extra container costs
 almost nothing and buys independent restart and scaling.
 
+The Python image runs as an unprivileged user. Nothing in the application writes to disk, uploads go
+to GridFS and logs go to stdout, so root brings no benefit and `ingest` is the process that parses
+attacker controlled input. Only `mx` stays root, because Postfix requires it. All listening ports
+are above 1024, so dropping privileges costs nothing.
+
 Every service declares `mem_limit` and log rotation locally instead of relying on the Docker
 daemon configuration, so installing this stack never requires restarting the Docker daemon on a
 host that runs other projects.
@@ -188,6 +193,11 @@ Two things follow from this:
   DMARC, PTR, MX, A and DNSBL queries all use the same resolver.
 - A `127.255.255.x` answer is reported as `blocked`, never as `listed`. A check that could not run
   says so instead of guessing.
+
+The resolver can be verified with the addresses the blocklists reserve for testing: `127.0.0.2` must
+come back listed on most of them and `127.0.0.1` must come back listed on none. If `zen.spamhaus.org`
+reports `blocked` for `127.0.0.2`, queries are leaving through a public resolver and every blacklist
+result in the report is worthless.
 
 Access is restricted to private ranges, so the resolver is not reachable from outside the Docker
 network.
@@ -411,6 +421,11 @@ present.
 ---
 
 ## Database
+
+The MongoDB client is created with `connect=False`. Celery's prefork pool forks after the module is
+imported, and a client that has already opened its monitoring threads and sockets is not fork safe;
+PyMongo warns about it and it can deadlock. Deferring the connection means each forked child opens
+its own.
 
 ### MongoDB Indexes (Required)
 
