@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
 
-from src.api import auth, events, mail_tests
+from src.api import auth, mail_tests
 
 WEB_ROOT = os.getenv("WEB_ROOT", "public")
 BLOCKED_WEB_SUFFIXES = (".md", ".yml", ".yaml", ".toml", ".ini", ".log", ".bak", ".sql")
@@ -56,7 +56,6 @@ def health():
 
 
 app.include_router(mail_tests.router)
-app.include_router(events.router)
 app.include_router(auth.router)
 
 if os.path.isfile(os.path.join(WEB_ROOT, "index.html")):
