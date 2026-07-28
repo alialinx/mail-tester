@@ -143,6 +143,44 @@ mx:
 
 ---
 
+## Deployment Specific Configuration
+
+`docker-compose.yml` is meant to run anywhere without changes. Anything that belongs to one
+particular server goes into `docker-compose.override.yml`, which Docker Compose merges
+automatically and which is not committed.
+
+An example for a host that already runs Traefik is shipped in the repo:
+
+```bash
+cp docker-compose.traefik.yml docker-compose.override.yml
+# edit the Host() rule, entrypoint and certresolver names to match your Traefik setup
+docker compose up -d
+```
+
+Joining Traefik's network does not change Traefik itself. Traefik discovers containers through
+the Docker API and reads their labels, so adding a labelled container is purely additive: no
+restart and no configuration change on the existing stack. Just keep the router and middleware
+names unique.
+
+`mx` is never routed through Traefik. It binds port 25 on the host directly, because a proxy
+would replace the sending server's IP address with its own.
+
+---
+
+## Accounts
+
+Tests work without an account, limited per IP address per day. Registered users get their own
+daily quota, stored on the user document.
+
+- `POST /register` – JSON body with `email` and `password`
+- `POST /login` – form encoded `username` and `password`, returns a bearer token
+- `POST /generate` – accepts an optional `Authorization: Bearer <token>` header
+
+The web interface stores the token in `localStorage` and falls back to anonymous mode when the
+token expires.
+
+---
+
 ## Result Statuses
 
 `GET /result/{to_address}` may return:
