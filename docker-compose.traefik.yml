@@ -1,0 +1,54 @@
+# Traefik ile HTTPS örneği.
+#
+# Bu dosya doğrudan kullanılmıyor. Kendi sunucunda kopyala:
+#
+#   cp docker-compose.traefik.yml docker-compose.override.yml
+#
+# docker compose, override dosyasını varsa kendiliğinden birleştiriyor; ekstra parametre
+# gerekmiyor. override dosyası git'e girmiyor, yani asıl docker-compose.yml her sunucuda
+# olduğu gibi çalışmaya devam ediyor. Traefik kullanmayan biri bu dosyaya hiç dokunmuyor.
+#
+# Traefik'in kendisine dokunmuyoruz: container'ları Docker API üzerinden keşfedip label
+# okuduğu için buradaki tanım tamamen ekleme. Traefik restart etmek, config dosyası
+# değiştirmek gerekmiyor. Sadece router adlarının ve Host kuralının çakışmadığından emin ol.
+
+services:
+  api:
+    # ports'u ezmiyoruz. Ana dosyadaki bağlama zaten 127.0.0.1:8000, dışarıya kapalı.
+    # Traefik container'a edge network'ü üzerinden ulaşıyor, o binding sadece yerel hata
+    # ayıklama için duruyor. Böylece Compose'un !override etiketine de ihtiyacımız yok.
+    networks:
+      - default
+      - edge
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=edge"
+
+      - "traefik.http.routers.mailtester.rule=Host(`mailtesterbox.com`) || Host(`www.mailtesterbox.com`)"
+      - "traefik.http.routers.mailtester.entrypoints=websecure"
+      - "traefik.http.routers.mailtester.tls=true"
+      - "traefik.http.routers.mailtester.tls.certresolver=le"
+
+      # www -> apex
+      - "traefik.http.middlewares.mailtester-wwwstrip.redirectregex.regex=^https?://www\\.mailtesterbox\\.com/(.*)"
+      - "traefik.http.middlewares.mailtester-wwwstrip.redirectregex.replacement=https://mailtesterbox.com/$${1}"
+      - "traefik.http.middlewares.mailtester-wwwstrip.redirectregex.permanent=true"
+
+      - "traefik.http.middlewares.mailtester-headers.headers.stsSeconds=63072000"
+      - "traefik.http.middlewares.mailtester-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.mailtester-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.mailtester-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.mailtester-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.mailtester-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+
+      # Analiz ettiğimiz mail saldırganın yazdığı veri. CSP, bir şekilde ekrana kaçan
+      # script'in çalışmasını engelliyor. Arayüzde inline script/style yok, bu yüzden
+      # 'self' yeterli.
+      - "traefik.http.middlewares.mailtester-headers.headers.contentSecurityPolicy=default-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'"
+
+      - "traefik.http.routers.mailtester.middlewares=mailtester-wwwstrip,mailtester-headers"
+      - "traefik.http.services.mailtester.loadbalancer.server.port=8000"
+
+networks:
+  edge:
+    external: true
