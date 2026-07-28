@@ -1,11 +1,9 @@
 # Mail Tester
 
-https://mail-tester.alialin.me
+Mail Tester is a self hosted service that checks the quality and deliverability of outgoing emails.
 
-Mail Tester is a simple service that checks the quality and deliverability of outgoing emails.
-
-Users send an email to a temporary test address.  
-The system receives the email, analyzes it in the background using Celery, and returns a score with explanations.
+Users send an email to a temporary test address. The system receives the email on its own SMTP
+server, analyzes it in the background and returns a score with explanations.
 
 ---
 
@@ -16,80 +14,143 @@ Mail Tester helps you understand why an email may fail or succeed.
 You can test:
 
 - Email server configuration
-- SPF, DKIM, and DMARC records
+- SPF, DKIM and DMARC records
 - Reverse DNS (rDNS)
 - Sending IP blacklist status
+- The SMTP connection itself: client IP, HELO name, STARTTLS version and cipher
+- Envelope sender (MAIL FROM) and the From header
 - Required and recommended email headers
 - Basic email content quality
-- Common delivery and spam-related issues
+- SpamAssassin score and rules
 
 ---
 
 ## How It Works
 
-1. The user calls Generate Test Email.
-2. The system creates a unique temporary email address, for example:
+1. The user calls `POST /generate`.
+2. The system creates a unique temporary address, for example `test-a92bd12f98bc4@yourdomain.com`,
+   stores it in MongoDB and writes it to Redis with a TTL.
+3. The user sends an email to that address.
+4. Our own Postfix (`mx` service) receives it on port 25. For every `RCPT TO` it asks the
+   `ingest` service whether the address is live. Unknown or expired addresses are rejected inside
+   the SMTP conversation, so spam never enters the queue.
+5. Postfix delivers the mail over LMTP to `ingest`, which stores the raw message in GridFS
+   together with the connection facts and queues the analysis task.
+6. The Celery worker analyzes the mail and stores the result.
+7. The browser gets the result pushed over SSE (`GET /events/{to_address}`) and reads it from
+   `GET /result/{to_address}`.
 
-   test-a92bd12f98bc4@yourdomain.com
-
-3. The system stores the generated address in MongoDB with status `pending`.
-4. The user sends an email to the generated test address.
-5. A Celery worker polls the mailbox via IMAP until the email arrives.
-6. When the email is received, it is analyzed and stored.
-7. The user requests the result and receives the score and report.
-
-The system does not access the user’s mailbox.  
-The user only sends an email to the generated test address.
-
----
-
-## Background Processing (Celery)
-
-Mail Tester uses Celery for asynchronous background processing.
-
-- The API never waits for incoming emails
-- Email retrieval and analysis run in background workers
-- The API remains fast and non-blocking
-- All state and results are stored in MongoDB
-- Redis is used as the Celery broker (task queue)
-- All processing states and analysis results are stored in MongoDB
-
+There is no IMAP polling. The address is single use: once a mail arrives it is removed from Redis
+and further mails to it are rejected.
 
 ---
 
+## Architecture
 
-## SpamAssassin (Spam Score)
+```
+internet ──25──▶ mx (Postfix)
+                   │
+                   ├─ RCPT TO  ──tcp:2500──▶ ingest ──▶ Redis
+                   └─ DATA     ──lmtp:2400─▶ ingest
+                                               ├─ raw mail  ──▶ MongoDB GridFS
+                                               └─ task      ──▶ Redis ──▶ worker
+                                                                            │
+                                       browser ◀── SSE ── api ◀── MongoDB ──┘
+```
 
-Mail Tester can optionally run a SpamAssassin scan and include the spam score and report in the final result.
+| Service | Job |
+|---|---|
+| `mx` | Postfix. Receives mail on port 25. No mailbox, no alias, no SASL, no relay. |
+| `ingest` | LMTP server + Postfix recipient map. Stores the mail and triggers analysis. |
+| `api` | FastAPI. Address generation, results, SSE stream and the web interface. |
+| `worker` | Celery. Runs the analysis. |
+| `dns` | unbound. Own recursive resolver, required for correct blacklist results. |
+| `spamassassin` | spamd, reached over TCP. |
+| `mongo` | Test addresses, mail events, analysis results, raw mails (GridFS). |
+| `redis` | Celery broker, live test addresses, SSE pub/sub. |
 
-SpamAssassin runs as a separate `spamd` service and is accessed by the Celery worker over TCP.
+### Why Postfix and not just a Python SMTP server
 
-This keeps the API fast and allows SpamAssassin to be enabled or disabled independently.
+Postfix gives us a queue. If `ingest` or MongoDB is down for a moment, `ingest` answers `451` and
+Postfix keeps the mail in its queue and retries, so nothing is lost during a deploy. It also
+handles STARTTLS, protocol edge cases and rate limits.
 
-### Docker Compose service
+`mx` is **not** placed behind a reverse proxy on purpose. The real client IP from the TCP
+connection is the most valuable input of the whole analysis and a proxy would hide it.
 
-Add the following service to `docker-compose.yml`:
+### Why there is no spam filtering on the MX
+
+There is deliberately no DNSBL, postscreen or content filter in `mx/main.cf.template`. The job of
+a mail tester is to tell a blacklisted sender that it is blacklisted. If we rejected that sender,
+the user would never get a result. This is the opposite of how a normal mail server is configured.
+
+---
+
+## Requirements
+
+- A server with **inbound TCP port 25 open**. Nothing else needs to be reachable from outside.
+- A domain whose MX record points to that server.
+- Docker and Docker Compose.
+
+Port 587 stays closed. This service only receives mail, so there is no submission port, no SASL
+and no IMAP, which means there are no credentials to brute force.
+
+---
+
+## DNS Records
+
+For `example.com` on server `1.2.3.4`:
+
+```
+example.com.          MX   10 mx.example.com.
+mx.example.com.       A       1.2.3.4
+example.com.          TXT     "v=spf1 -all"
+_dmarc.example.com.   TXT     "v=DMARC1; p=reject;"
+```
+
+The SPF and DMARC records above say "this domain never sends mail", which prevents anyone from
+spoofing it. If you later send mail from the domain, add the sending host to the SPF record.
+
+Do not add a wildcard A or CNAME record. Setting the server's PTR record to `mx.example.com` is
+recommended but not required, since the service only receives mail.
+
+---
+
+## Quickstart
+
+```bash
+cp .env.example .env
+# MAIL_DOMAIN, MX_HOSTNAME, MongoDB credentials and SECRET_KEY must be filled in
+docker compose build
+docker compose up -d
+docker compose logs -f mx ingest
+```
+
+Then open `http://127.0.0.1:8000`. The web interface is served from `public/` and Swagger is at
+`/docs`.
+
+### STARTTLS certificate
+
+If no certificate is mounted, `mx` generates a self signed one on startup. That is enough for
+opportunistic TLS, but mounting a real certificate is better:
 
 ```yml
-spamassassin:
-  image: axllent/spamassassin:latest
-  container_name: mailtester-spamassassin
-  restart: unless-stopped
-  ports:
-    - "783:783"
-  worker:
-  depends_on:
-    - mongo
-    - redis
-    - spamassassin
-  ```
+mx:
+  volumes:
+    - /etc/letsencrypt/live/mx.example.com/fullchain.pem:/etc/postfix/tls/mx.crt:ro
+    - /etc/letsencrypt/live/mx.example.com/privkey.pem:/etc/postfix/tls/mx.key:ro
+```
+
+---
+
 ## Result Statuses
 
-GET /result/{to_address} may return:
+`GET /result/{to_address}` may return:
 
-- `pending` – address created, worker not started yet
-- `processing` – worker is waiting for the email
-- `analyzed` – analysis completed successfully
+- `pending` – address created, no mail yet
+- `received` – mail arrived, analysis queued
+- `processing` – analysis running
+- `analyzed` – analysis completed
 - `expired` – test address expired
 - `error` – an error occurred during processing
 
@@ -99,18 +160,16 @@ GET /result/{to_address} may return:
 
 - Every email starts with 10 points
 - Points are reduced when problems are detected
-- Each issue clearly explains:
-  - What is wrong
-  - How much it affects the score
+- Each issue explains what is wrong, how much it costs and how to fix it
 
 ### Example Score Reductions
 
 - Missing SPF record → -2.0
-- Missing DKIM record → -1.5
-- Missing DMARC record → -1.5
-- Missing important headers → -0.2 to -0.5
+- Missing DKIM record → -1.0
+- Missing DMARC record → -1.0
+- Missing important headers → -0.5
 - Reverse DNS mismatch → -0.4
-- IP listed in blacklists → up to -3.0
+- IP listed in blacklists → -0.5
 
 ### Final Score Meaning
 
@@ -119,115 +178,14 @@ GET /result/{to_address} may return:
 - 5–6.9 → Average
 - Below 5 → Poor
 
----
-
-## Quickstart (Docker)
-
-
+A blacklist query that is refused by the provider is reported as `blocked`, not as `listed`.
+Telling somebody their IP is blacklisted when it is not would make the whole report untrustworthy.
 
 ---
-
-### 1) Configure environment variables
-
-Create a `.env` file in the project root:
-
-
-### 2) Start the application
-
-Mail Tester is designed to run fully with Docker.
-
-Run this command in the project root:
-
-docker compose up --build
-
----
-
-### What this does
-
-This single command:
-
-- Builds the API image
-- Builds the Celery worker image
-- Starts MongoDB
-- Starts Redis
-- Starts all services in the correct order
-- Connects all services using Docker networking
-
-No manual setup is required.
-
----
-
-### Services started
-
-- FastAPI API
-  - Runs with Uvicorn inside the container
-  - Exposes port 8000
-  - Handles all HTTP requests
-
-- Celery Worker
-  - Runs in the background
-  - Polls the mailbox via IMAP
-  - Analyzes emails
-  - Stores results in MongoDB
-
-- Redis
-  - Message broker for Celery
-  - Result backend for Celery
-
-- MongoDB
-  - Stores test emails
-  - Stores processing state
-  - Stores analysis results
-
----
-
-### Accessing the API
-
-Once everything is running, open:
-
-http://localhost:8000
-
-Swagger UI will be available on the root page.
-
----
-
-## Postfix Virtual Alias Setup
-
-Mail Tester creates temporary email addresses like:
-
-test-1234@example.com
-
-These addresses do not exist as real mailboxes.  
-Postfix must forward all incoming test emails to one real mailbox.
-
----
-
-### Configuration
-
-Edit the Postfix virtual alias file:
-
-```bash
-/etc/postfix/virtual_alias
-
-@example.com    mail-tester@example.com
-
-postmap /etc/postfix/virtual_alias
-systemctl reload postfix
-
-
-/etc/postfix/main.cf
-
-virtual_alias_maps = hash:/etc/postfix/virtual_alias
-
-```
-
 
 ## Database
 
 ### MongoDB Indexes (Required)
-
-This project uses a TTL index to automatically remove expired test email records from `test_emails`.
-Make sure to create the following indexes after setting up MongoDB:
 
 ```bash
 mongosh
@@ -239,30 +197,18 @@ db.test_emails.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0 })
 
 // Ensure generated addresses are unique
 db.test_emails.createIndex({ to_address: 1 }, { unique: true })
+
+// Anonymous daily quota counts by IP and analysis date
+db.test_emails.createIndex({ created_ip: 1, analyzed_at: 1 })
 ```
 
-
-## Usage Flow
-
-1. Call POST /generate
-2. Receive a temporary test email address
-3. Send an email to that address
-4. Poll GET /result/{to_address}
-5. When status is `analyzed`, read the result
+Analyzed records get their `expires_at` removed so the TTL index cannot delete a finished result.
 
 ---
 
+## Usage Flow
 
-## Summary
-
-Mail Tester is built as an asynchronous system.
-
-- FastAPI handles HTTP requests
-- Celery processes emails in the background
-- Redis coordinates tasks
-- MongoDB stores results
-
-This architecture is designed for safe, scalable, and non-blocking email analysis.
-
-A simple demo `index.html` may be included for testing purposes.
-The backend API works independently from any frontend.
+1. `POST /generate` → temporary test address
+2. Send an email to that address
+3. Subscribe to `GET /events/{to_address}` (SSE) or poll `GET /result/{to_address}`
+4. When the status is `analyzed`, read the result
