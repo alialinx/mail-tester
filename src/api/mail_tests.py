@@ -5,9 +5,10 @@ from fastapi import APIRouter, Depends
 from fastapi import Request
 
 from src.api.functions import get_request_info, optional_current_user
+from src.config import TEST_ADDRESS_TTL_MINUTES
+from src.db.cache import address_key, get_cache
 from src.db.db import get_db
 from src.processor.generator import generate_random_email
-from src.worker.tasks import pull_and_analyze
 
 router = APIRouter()
 
@@ -37,25 +38,37 @@ def generate_random(db=Depends(get_db), req_info=Depends(get_request_info), curr
     else:
         query["created_ip"] = created_ip
 
+    cache = get_cache()
+
+    # Eski açık adresleri kapatıyoruz, Redis'ten de düşüyorlar ki mx artık kabul etmesin
+    for previous in db.test_emails.find(query, {"to_address": 1}):
+        cache.delete(address_key(previous["to_address"]))
+
     db.test_emails.update_many(query, {"$set": {"status": "expired"}})
+
+    expires_at = now + timedelta(minutes=TEST_ADDRESS_TTL_MINUTES)
 
     doc = {
         "to_address": to_address,
         "status": "pending",
         "created_at": now,
-        "expires_at": now + timedelta(minutes=5),
+        "expires_at": expires_at,
         "created_ip": created_ip,
         "owner_user_id": owner_user_id,
         "receiver_at": None,
+        "mail_event_id": None,
         "analysis_id": None,
         "analysis_started_at": None,
         "last_error": None,
     }
 
     db.test_emails.insert_one(doc)
-    pull_and_analyze.delay(to_address)
 
-    return {"result": to_address}
+    # Adresi mx'in göreceği yere yazıyoruz. TTL bitince Postfix o adresi RCPT
+    # aşamasında reddediyor, ayrıca temizlik yapmamız gerekmiyor.
+    cache.set(address_key(to_address), "1", ex=TEST_ADDRESS_TTL_MINUTES * 60)
+
+    return {"result": to_address, "expires_at": expires_at, "expires_in": TEST_ADDRESS_TTL_MINUTES * 60}
 
 
 @router.get("/result/{to_address}", tags=["result"])

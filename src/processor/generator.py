@@ -1,11 +1,9 @@
 import secrets
-from datetime import datetime
 
-from src.config import DOMAIN
-from src.db.db import get_db
+from src.config import MAIL_DOMAIN
 
-domain = DOMAIN
+
 def generate_random_email():
     token = "test" + "-" + secrets.token_hex(10)
-    test_mail = token + "@" + domain
+    test_mail = token + "@" + MAIL_DOMAIN
     return test_mail
