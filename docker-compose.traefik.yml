@@ -27,7 +27,10 @@ services:
 
       - "traefik.http.middlewares.mailtester-headers.headers.contentSecurityPolicy=default-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'"
 
-      - "traefik.http.routers.mailtester.middlewares=mailtester-wwwstrip,mailtester-headers"
+      - "traefik.http.middlewares.mailtester-compress.compress=true"
+      - "traefik.http.middlewares.mailtester-compress.compress.excludedContentTypes=font/woff2"
+
+      - "traefik.http.routers.mailtester.middlewares=mailtester-wwwstrip,mailtester-headers,mailtester-compress"
       - "traefik.http.services.mailtester.loadbalancer.server.port=8000"
 
 networks:

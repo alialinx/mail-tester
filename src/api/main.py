@@ -10,6 +10,8 @@ from src.api import auth, mail_tests
 
 WEB_ROOT = os.getenv("WEB_ROOT", "public")
 BLOCKED_WEB_SUFFIXES = (".md", ".yml", ".yaml", ".toml", ".ini", ".log", ".bak", ".sql")
+IMMUTABLE_WEB_PREFIXES = ("fonts/",)
+IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 
 
 class WebFiles(StaticFiles):
@@ -18,9 +20,16 @@ class WebFiles(StaticFiles):
         for part in path.split("/"):
             if part.startswith(".") and part != ".":
                 raise HTTPException(status_code=404)
+
         if path.lower().endswith(BLOCKED_WEB_SUFFIXES):
             raise HTTPException(status_code=404)
-        return await super().get_response(path, scope)
+
+        response = await super().get_response(path, scope)
+
+        if path.startswith(IMMUTABLE_WEB_PREFIXES):
+            response.headers["cache-control"] = IMMUTABLE_CACHE
+
+        return response
 
 
 app = FastAPI(
