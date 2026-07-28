@@ -17,6 +17,10 @@ services:
     # ports'u ezmiyoruz. Ana dosyadaki bağlama zaten 127.0.0.1:8000, dışarıya kapalı.
     # Traefik container'a edge network'ü üzerinden ulaşıyor, o binding sadece yerel hata
     # ayıklama için duruyor. Böylece Compose'un !override etiketine de ihtiyacımız yok.
+    volumes:
+      # Kendi arayüzün. index.html içeren bir dizini buraya bağla, API kök adresten
+      # servis eder. Bağlamazsan API tek başına çalışır, kök adres /docs'a yönlendirir.
+      - /opt/mailtesterbox-web:/app/public:ro
     networks:
       - default
       - edge

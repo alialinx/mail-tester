@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 .idea
 todolist.txt
+public/

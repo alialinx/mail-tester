@@ -1,10 +1,16 @@
 # app/main.py
+import os
+
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
 from src.api import auth, events, mail_tests
+
+# Arayüz bu repoda gelmiyor. Kendi arayüzünü /app/public içine mount edebilirsin,
+# mount edilmezse API tek başına çalışmaya devam ediyor.
+WEB_ROOT = os.getenv("WEB_ROOT", "public")
 
 app = FastAPI(
     title="Mail Tester",
@@ -37,10 +43,21 @@ async def swagger():
     )
 
 
+@app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok", "web": os.path.isfile(os.path.join(WEB_ROOT, "index.html"))}
+
+
 # Router
 app.include_router(mail_tests.router)
 app.include_router(events.router)
 app.include_router(auth.router)
 
-# Arayüz. Mount en sonda olmalı, yoksa router'ları gölgeliyor.
-app.mount("/", StaticFiles(directory="public", html=True), name="public")
+# Arayüz mount edilmişse kök adresten servis ediyoruz. Mount en sonda olmalı,
+# yoksa router'ları gölgeliyor.
+if os.path.isfile(os.path.join(WEB_ROOT, "index.html")):
+    app.mount("/", StaticFiles(directory=WEB_ROOT, html=True), name="web")
+else:
+    @app.get("/", include_in_schema=False)
+    def index():
+        return {"service": "mail-tester", "docs": "/docs"}

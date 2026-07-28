@@ -126,8 +126,22 @@ docker compose up -d
 docker compose logs -f mx ingest
 ```
 
-Then open `http://127.0.0.1:8000`. The web interface is served from `public/` and Swagger is at
-`/docs`.
+Then open `http://127.0.0.1:8000/docs` for Swagger.
+
+### Web interface
+
+This repository ships the API and the SMTP ingest only, without a user interface. If you mount a
+directory containing an `index.html` at `/app/public`, the API serves it from the root path on the
+same origin, so there is nothing to configure for CORS:
+
+```yml
+api:
+  volumes:
+    - /opt/my-frontend:/app/public:ro
+```
+
+Without that mount the API runs on its own and `/` returns a small JSON pointing at `/docs`.
+`GET /health` reports whether an interface is mounted.
 
 ### STARTTLS certificate
 
