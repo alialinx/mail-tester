@@ -8,7 +8,7 @@ load_dotenv()
 
 
 MONGO_HOST = os.getenv("MONGO_HOST", "mongo")
-MONGO_PORT = int(os.getenv("MONGO_PORT"))
+MONGO_PORT = int(os.getenv("MONGO_PORT", "27017"))
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "mail_tester")
 
 MONGO_DB_USER = (os.getenv("MONGO_DB_USER") or "").strip()
@@ -36,6 +36,6 @@ DNSBL_CONCURRENCY = int(os.getenv("DNSBL_CONCURRENCY", "10"))
 
 
 
-TOKEN_EXPIRE_MINUTES = int(os.getenv("TOKEN_EXPIRE_MINUTES"))
+TOKEN_EXPIRE_MINUTES = int(os.getenv("TOKEN_EXPIRE_MINUTES", "1440"))
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
