@@ -7,7 +7,6 @@ from src.processor.analyzer import Analyzer
 from src.processor.service import get_sender_ip
 from src.worker.celery_app import celery_app
 from src.worker.limits import get_test_email_context, try_consume_quota_once
-from src.worker.spamassassin_client import spamd_check
 
 
 @celery_app.task(bind=True, max_retries=30)
@@ -60,13 +59,8 @@ def pull_and_analyze(self, to_address: str):
             "subject": msg.get("Subject"),
         }
 
-        raw_bytes = (
-            msg.as_bytes()
-            if hasattr(msg, "as_bytes")
-            else (msg.as_string() or "").encode("utf-8", "ignore")
-        )
-
-        result["spamassassin"] = spamd_check(raw_bytes)
+        # Analyzer taramayı çoktan yaptı, ikinci kez spamd'ye göndermiyoruz
+        result["spamassassin"] = result["checks"]["spamassassin"]
         result["owner"] = {
             "type": "user" if email_context.get("owner_user_id") else "anonymous",
             "user_id": email_context.get("owner_user_id"),
