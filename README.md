@@ -250,6 +250,11 @@ ports. `GET /health` reports whether a web interface is mounted. Swagger is at `
 | `INGEST_HOST`, `INGEST_LMTP_PORT`, `INGEST_MAP_PORT` | Where Postfix reaches the ingest service. |
 | `MESSAGE_SIZE_LIMIT` | Maximum accepted message size in bytes, enforced by both Postfix and ingest. |
 | `TEST_ADDRESS_TTL_MINUTES` | How long a generated address stays live. |
+| `ANON_DAILY_LIMIT` | Analyses per day for a visitor without an account, counted per IP address. |
+| `USER_DAILY_LIMIT` | Analyses per day for a registered user. Also written onto the user document at registration. |
+| `GENERATE_RATE_LIMIT`, `GENERATE_RATE_WINDOW` | Requests to `/generate` allowed per window, per user or per IP. |
+| `AUTH_RATE_LIMIT`, `AUTH_RATE_WINDOW` | Requests to `/register` and `/login` allowed per window, per IP. |
+| `PASSWORD_MIN_LENGTH` | Minimum password length at registration. |
 | `TLS_CERT_FILE`, `TLS_KEY_FILE` | STARTTLS certificate paths. A self signed pair is generated if the files are missing. |
 | `DNS_RESOLVER` | Hostname of the unbound container. Leaving it empty falls back to the system resolver and makes blacklist results unreliable. |
 | `DNS_TIMEOUT`, `DNS_LIFETIME` | General DNS query budget. |
@@ -312,14 +317,45 @@ executing. The interface uses no inline scripts or styles, so `'self'` is suffic
 
 ---
 
-## Accounts
+## Limits
 
-Tests work without an account, limited per IP address per day. Registered users get their own daily
-quota, stored on the user document.
+There are two independent mechanisms, both configured from the environment.
+
+**Daily quota** is the number of analyses allowed per day. Anonymous visitors are counted by IP
+address, registered users by a counter on their own document, which is why registering is worth it:
+`ANON_DAILY_LIMIT` defaults to 5 and `USER_DAILY_LIMIT` to 25.
+
+The quota is charged when an analysis actually starts, not when an address is generated, so an
+address that never receives a mail costs nothing. `/generate` still refuses immediately with `429`
+once the quota is used up, so the user finds out before sending a mail instead of after.
+
+The charge happens exactly once per address. The worker claims an address with a conditional update
+on `analysis_started_at`, so a task that is delivered twice cannot be billed twice.
+
+**Request rate** protects the endpoints from abuse. Without it anybody could create unlimited test
+addresses, because generating one is cheap while storing it is not. The counter is a Redis key per
+scope and identity with a TTL, and the response carries `Retry-After`. If Redis is unreachable the
+request is allowed rather than blocked, since losing rate limiting is better than losing service.
+
+`GET /limits` returns the caller's own quota and is what the interface shows. If Redis or MongoDB
+counters are unavailable the endpoint still answers, so the interface never blocks on it.
+
+---
+
+## Accounts
 
 - `POST /register` – JSON body with `email` and `password`
 - `POST /login` – form encoded `username` and `password`, returns a bearer token
+- `POST /logout` – deletes the token server side, so it stops working immediately
+- `GET /me` – email and remaining quota of the current token
 - `POST /generate` – accepts an optional `Authorization: Bearer <token>` header
+
+Email addresses are normalised to lower case on both registration and login, so the same account
+can always be reached regardless of how it is typed.
+
+A failed login answers `401 Invalid email or password` whether or not the address exists. Different
+messages for the two cases would turn the login form into a way of checking which addresses are
+registered.
 
 ---
 
@@ -381,7 +417,13 @@ use <your_database_name>
 db.test_emails.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0 })
 db.test_emails.createIndex({ to_address: 1 }, { unique: true })
 db.test_emails.createIndex({ created_ip: 1, analyzed_at: 1 })
+db.users.createIndex({ email: 1 }, { unique: true })
+db.tokens.createIndex({ token: 1 }, { unique: true })
 ```
+
+The unique index on `users.email` is what actually prevents duplicate accounts. Registration checks
+for an existing address first, but two simultaneous requests can both pass that check, and only the
+index stops the second insert.
 
 The TTL index removes abandoned test addresses. Analyzed records get their `expires_at` field
 removed so a finished result cannot be deleted by it. The third index serves the anonymous quota
