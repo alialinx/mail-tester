@@ -18,6 +18,17 @@ MONGO_AUTH_SOURCE = (os.getenv("MONGO_AUTH_SOURCE") or "").strip()
 
 MONGODB_URI = os.getenv("MONGODB_URI")
 DOMAIN = os.getenv("DOMAIN")
+
+# Test adreslerinin domaini. Eski kurulumlarda DOMAIN adıyla duruyordu.
+MAIL_DOMAIN = os.getenv("MAIL_DOMAIN") or DOMAIN
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/2")
+
+INGEST_LMTP_PORT = int(os.getenv("INGEST_LMTP_PORT", "2400"))
+INGEST_MAP_PORT = int(os.getenv("INGEST_MAP_PORT", "2500"))
+MESSAGE_SIZE_LIMIT = int(os.getenv("MESSAGE_SIZE_LIMIT", "26214400"))
+TEST_ADDRESS_TTL_MINUTES = int(os.getenv("TEST_ADDRESS_TTL_MINUTES", "10"))
+
 IMAP_HOST = os.getenv("IMAP_HOST")
 IMAP_PORT = os.getenv("IMAP_PORT")
 IMAP_EMAIL = os.getenv("IMAP_EMAIL")
