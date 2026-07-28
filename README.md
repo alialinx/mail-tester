@@ -38,11 +38,19 @@ You can test:
 5. `mx` delivers the mail over LMTP to `ingest`, which stores the raw message in GridFS together
    with the connection facts and queues the analysis task.
 6. The Celery worker analyzes the mail and stores the result.
-7. The browser gets the result pushed over SSE (`GET /events/{to_address}`) and reads it from
-   `GET /result/{to_address}`.
+7. The browser asks `GET /check/{to_address}` until the analysis is ready.
 
-There is no IMAP polling. The address is single use: once a mail arrives it is deleted from Redis,
-so a second mail to the same address is rejected at `RCPT TO`.
+There is no IMAP polling and no mailbox anywhere.
+
+**The address is reusable.** It stays live for its whole lifetime and accepts more than one message.
+Each arriving mail becomes its own `mail_events` document with its own analysis, so a sender can fix
+a problem, send again to the same address and compare. `GET /check/{to_address}?after=<event_id>`
+only reports mail that arrived after the event the caller already has, which is what makes a "check
+again" button able to distinguish "nothing new yet" from "here is the newer message".
+
+The daily quota is charged per analysed message, not per address, and each message can only be
+charged once: the worker claims a `mail_events` document with a conditional update on
+`analysis_started_at`, so a task delivered twice cannot bill twice.
 
 ---
 
@@ -378,17 +386,19 @@ registered.
 
 `GET /result/{to_address}` may return:
 
-- `pending` – address created, no mail yet
-- `received` – mail arrived, analysis queued
+- `waiting` – no mail has arrived yet
 - `processing` – analysis running
-- `analyzed` – analysis completed
-- `expired` – test address expired
-- `error` – an error occurred during processing
+- `analyzed` – analysis completed, the result is in the response
+- `expired` – the address expired before any mail arrived
+- `error` – analysis failed, `detail` explains why
 
-`GET /events/{to_address}` streams the same values as server sent events. It emits the current
-status immediately on connect, because the mail may already have arrived before the browser
-subscribed, and then sends a comment line every fifteen seconds so proxies do not close an idle
-connection. The stream ends on `analyzed`, `error` or `expired`.
+`GET /result/{to_address}` returns the newest analysed message for the address, without the `after`
+filter. It keeps working after the address itself has expired, because results live on
+`mail_events` and `analyses`, which have no TTL.
+
+There is deliberately no server push. The interface is driven by a button, so it polls `/check`
+about once every two seconds while waiting and gives up after three minutes. Server sent events
+would add a second source of truth for the same question and buy nothing a person would notice.
 
 ---
 
@@ -436,7 +446,8 @@ use <your_database_name>
 
 db.test_emails.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0 })
 db.test_emails.createIndex({ to_address: 1 }, { unique: true })
-db.test_emails.createIndex({ created_ip: 1, analyzed_at: 1 })
+db.mail_events.createIndex({ to_address: 1, _id: -1 })
+db.mail_events.createIndex({ created_ip: 1, analyzed_at: 1 })
 db.users.createIndex({ email: 1 }, { unique: true })
 db.tokens.createIndex({ token: 1 }, { unique: true })
 ```
@@ -445,7 +456,11 @@ The unique index on `users.email` is what actually prevents duplicate accounts. 
 for an existing address first, but two simultaneous requests can both pass that check, and only the
 index stops the second insert.
 
-The TTL index removes abandoned test addresses. Analyzed records get their `expires_at` field
+The two `mail_events` indexes matter: the first serves every `/check` call, which looks up the newest
+message for an address, and the second serves the anonymous daily quota, which counts analysed
+messages by IP address and would otherwise scan the collection.
+
+The TTL index removes expired test addresses. Analyzed records get their `expires_at` field
 removed so a finished result cannot be deleted by it. The third index serves the anonymous quota
 count, which would otherwise scan the collection as data grows.
 
@@ -473,5 +488,6 @@ of each delivery attempt; a working setup ends with `status=sent (250 Message ac
 
 1. `POST /generate` → temporary test address
 2. Send an email to that address
-3. Subscribe to `GET /events/{to_address}` or poll `GET /result/{to_address}`
-4. When the status is `analyzed`, read the result
+3. `GET /check/{to_address}` until the status is `analyzed`
+4. Send another mail to the same address and call
+   `GET /check/{to_address}?after=<event_id>` to get the newer result
