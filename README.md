@@ -284,6 +284,11 @@ Paths whose components begin with a dot are answered with 404. A mounted directo
 working tree, and `StaticFiles` would otherwise serve `/.git/config` and let anybody reconstruct
 the repository from `/.git/objects`.
 
+Files ending in `.md`, `.yml`, `.yaml`, `.toml`, `.ini`, `.log`, `.bak` or `.sql` are answered with
+404 for the same reason. A repository mounted as a web root almost always contains a README and
+sometimes a compose file, and neither is meant to be readable by visitors. Note that `robots.txt`,
+`sitemap.xml`, `LICENSE.txt` and every real asset are unaffected.
+
 ---
 
 ## Deployment Specific Configuration

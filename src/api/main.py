@@ -9,6 +9,7 @@ from starlette.middleware.cors import CORSMiddleware
 from src.api import auth, events, mail_tests
 
 WEB_ROOT = os.getenv("WEB_ROOT", "public")
+BLOCKED_WEB_SUFFIXES = (".md", ".yml", ".yaml", ".toml", ".ini", ".log", ".bak", ".sql")
 
 
 class WebFiles(StaticFiles):
@@ -17,6 +18,8 @@ class WebFiles(StaticFiles):
         for part in path.split("/"):
             if part.startswith(".") and part != ".":
                 raise HTTPException(status_code=404)
+        if path.lower().endswith(BLOCKED_WEB_SUFFIXES):
+            raise HTTPException(status_code=404)
         return await super().get_response(path, scope)
 
 
