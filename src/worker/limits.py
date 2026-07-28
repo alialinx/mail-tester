@@ -12,7 +12,7 @@ def utc_day_start(dt: datetime) -> datetime:
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
 def get_utc_tomorrow_start(current_time: datetime) -> datetime:
-    return get_utc_day_start(current_time) + timedelta(days=1)
+    return utc_day_start(current_time) + timedelta(days=1)
 
 # --- Read helpers ---
 def get_test_email_context(db, to_address: str) -> dict:
