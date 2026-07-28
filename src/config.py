@@ -40,6 +40,13 @@ SPAMD_HOST = os.getenv("SPAMD_HOST", "spamassassin")
 SPAMD_TIMEOUT = float(os.getenv("SPAMD_TIMEOUT", "3.0"))
 SPAMD_PORT = int(os.getenv("SPAMD_PORT", "783"))
 
+# Kendi unbound container'ımız. Boş bırakılırsa sistemin resolver'ı kullanılır.
+DNS_RESOLVER = (os.getenv("DNS_RESOLVER") or "").strip()
+DNS_TIMEOUT = float(os.getenv("DNS_TIMEOUT", "3.0"))
+DNS_LIFETIME = float(os.getenv("DNS_LIFETIME", "5.0"))
+
+SSE_TIMEOUT = int(os.getenv("SSE_TIMEOUT", "900"))
+
 DNSBL_TIMEOUT = float(os.getenv("DNSBL_TIMEOUT", "2.0"))
 DNSBL_LIFETIME = float(os.getenv("DNSBL_LIFETIME", "2.0"))
 DNSBL_MAX_LISTS = int(os.getenv("DNSBL_MAX_LISTS", "20"))

@@ -26,6 +26,17 @@ services:
     mem_limit: 1g
     logging: *default-logging
 
+  # Kendi recursive resolver'ımız. DNSBL sağlayıcıları public resolver'lardan
+  # gelen sorguları engellediği için 8.8.8.8 ile doğru sonuç alınamıyor.
+  dns:
+    build:
+      context: .
+      dockerfile: dns/Dockerfile
+    container_name: mailtester-dns
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *default-logging
+
   spamassassin:
     image: axllent/spamassassin:latest
     container_name: mailtester-spamassassin
@@ -93,6 +104,7 @@ services:
     depends_on:
       - mongo
       - redis
+      - dns
       - spamassassin
     mem_limit: 1g
     cpus: 2.0

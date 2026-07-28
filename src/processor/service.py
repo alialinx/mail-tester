@@ -1,15 +1,47 @@
 import ipaddress
 import re
+import socket
 import dns.resolver
 import smtplib
 
 
 from src.config import DNSBL_TIMEOUT, DNSBL_LIFETIME, DNSBL_MAX_LISTS, DNSBL_CONCURRENCY
+from src.config import DNS_RESOLVER, DNS_TIMEOUT, DNS_LIFETIME
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# --- Resolver ---
+# dnspython nameservers alanına IP istiyor, container adını bir kere çözüp saklıyoruz.
+_resolver_ip = {}
+
+def get_resolver_ip():
+    if not DNS_RESOLVER:
+        return None
+
+    if "ip" not in _resolver_ip:
+        try:
+            _resolver_ip["ip"] = socket.gethostbyname(DNS_RESOLVER)
+        except Exception as e:
+            print("dns resolver adresi çözülemedi:", DNS_RESOLVER, repr(e), flush=True)
+            _resolver_ip["ip"] = None
+
+    return _resolver_ip["ip"]
+
+
+def get_resolver(timeout: float = None, lifetime: float = None) -> dns.resolver.Resolver:
+    resolver_ip = get_resolver_ip()
+
+    resolver = dns.resolver.Resolver(configure=not resolver_ip)
+    if resolver_ip:
+        resolver.nameservers = [resolver_ip]
+
+    resolver.timeout = timeout or DNS_TIMEOUT
+    resolver.lifetime = lifetime or DNS_LIFETIME
+    return resolver
+
 
 def check_spf_record(domain: str):
     try:
-        records = dns.resolver.resolve(domain, "TXT")
+        records = get_resolver().resolve(domain, "TXT")
     except Exception:
         return False, []
 
@@ -89,7 +121,7 @@ def check_dkim_record(domain: str, msg_raw: str):
     dkim_domain = f"{selector}._domainkey.{domain}"
 
     try:
-        answer = dns.resolver.resolve(dkim_domain, "TXT")
+        answer = get_resolver().resolve(dkim_domain, "TXT")
     except Exception:
         return False, None, clean_dkim_content
 
@@ -112,7 +144,7 @@ def check_dmarc_record(domain: str):
     dmarc_domain = f"_dmarc.{domain}".strip(".")
 
     try:
-        answers = dns.resolver.resolve(dmarc_domain, "TXT")
+        answers = get_resolver().resolve(dmarc_domain, "TXT")
     except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers, dns.exception.Timeout):
 
         return False, None
@@ -129,7 +161,7 @@ def check_dmarc_record(domain: str):
 def check_rdns(ip: str) -> dict:
     reversed_ip = ".".join(ip.split(".")[::-1]) + ".in-addr.arpa"
     try:
-        answer = dns.resolver.resolve(reversed_ip, "PTR")
+        answer = get_resolver().resolve(reversed_ip, "PTR")
         hostname = str(answer[0]).rstrip(".")
         return {"success": True, "hostname": hostname}
     except Exception:
@@ -171,9 +203,7 @@ def check_blacklists(ip: str) -> dict:
 
     reversed_ip = ".".join(ip.split(".")[::-1])
 
-    resolver = dns.resolver.Resolver(configure=True)
-    resolver.timeout = DNSBL_TIMEOUT
-    resolver.lifetime = DNSBL_LIFETIME
+    resolver = get_resolver(timeout=DNSBL_TIMEOUT, lifetime=DNSBL_LIFETIME)
 
     dnsbls = DNSBL_LISTS[:DNSBL_MAX_LISTS]
     results = {}
@@ -209,7 +239,7 @@ def check_blacklists(ip: str) -> dict:
 def get_mx_record(domain: str):
     try:
         mx_records = []
-        answers = dns.resolver.resolve(domain, "MX")
+        answers = get_resolver().resolve(domain, "MX")
         for r in answers:
             host = str(r.exchange).rstrip(".")
             mx_records.append(host)
@@ -220,7 +250,7 @@ def get_mx_record(domain: str):
 
 def check_a_record(domain: str) -> bool:
     try:
-        records = dns.resolver.resolve(domain, "A")
+        records = get_resolver().resolve(domain, "A")
         return bool(records)
     except Exception:
         return False
