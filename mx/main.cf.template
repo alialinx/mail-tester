@@ -1,34 +1,32 @@
-# Mail Tester MX
-# Bu Postfix sadece mail ALIR. Mail göndermez, relay etmez, diske mailbox yazmaz.
-# Gelen her mail LMTP ile ingest servisine teslim edilir.
-
 compatibility_level = 3.6
 
 myhostname = ${MX_HOSTNAME}
-mydomain = ${MAIL_DOMAIN}
-myorigin = $mydomain
 
-# Yerel teslim tamamen kapalı: mailbox yok, Dovecot yok, alias yok
+inet_protocols = ipv4
+
+default_transport = discard
+
+maximal_queue_lifetime = 1h
+bounce_queue_lifetime = 1h
+
 mydestination =
 local_recipient_maps =
 local_transport = error:5.1.1 no local delivery
 alias_maps =
 alias_database =
 
-# Test domainindeki bütün adresler "var" görünür, gerçek kontrolü ingest yapıyor
 virtual_mailbox_domains = ${MAIL_DOMAIN}
 virtual_mailbox_maps = static:all
 virtual_transport = lmtp:inet:${INGEST_HOST}:${INGEST_LMTP_PORT}
 
-# reject_unauth_destination zincirin başında duruyor: access map'te bir hata olsa
-# bile kendi domainimiz dışına relay etmemiz mümkün değil.
+lmtp_host_lookup = native
+
 relayhost =
 smtpd_recipient_restrictions =
     reject_unauth_destination
     check_recipient_access tcp:${INGEST_HOST}:${INGEST_MAP_PORT}
     reject
 
-# Kimlik doğrulama yok: kırılacak şifre, ele geçirilecek hesap yok
 smtpd_sasl_auth_enable = no
 
 smtpd_tls_security_level = may
@@ -36,9 +34,7 @@ smtpd_tls_cert_file = ${TLS_CERT_FILE}
 smtpd_tls_key_file = ${TLS_KEY_FILE}
 smtpd_tls_loglevel = 1
 
-# DİKKAT: burada bilinçli olarak hiçbir DNSBL / postscreen / içerik filtresi yok.
-# Bir mail tester'ın işi kara listedeki gönderene durumunu söylemek. Onu reddedersek
-# kullanıcı hiç sonuç alamaz. Normal bir mail sunucusunda bu yapılmaz.
+smtpd_tls_received_header = yes
 
 message_size_limit = ${MESSAGE_SIZE_LIMIT}
 smtpd_recipient_limit = 5
@@ -46,8 +42,6 @@ smtpd_client_connection_count_limit = 10
 smtpd_client_connection_rate_limit = 30
 smtpd_client_message_rate_limit = 30
 
-# Backscatter yok: bilinmeyen alıcı SMTP konuşmasının içinde reddedilir,
-# kabul edip sonra bounce atmıyoruz.
 smtpd_reject_unlisted_recipient = yes
 notify_classes =
 

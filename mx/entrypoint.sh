@@ -15,9 +15,6 @@ export MESSAGE_SIZE_LIMIT="${MESSAGE_SIZE_LIMIT:-26214400}"
 export TLS_CERT_FILE="${TLS_CERT_FILE:-/etc/postfix/tls/mx.crt}"
 export TLS_KEY_FILE="${TLS_KEY_FILE:-/etc/postfix/tls/mx.key}"
 
-# Gerçek sertifika mount edilmediyse kendi imzalı üretiyoruz. Gönderenlerin çoğu
-# opportunistic TLS kullandığı için bu bile şifrelemeyi açıyor; Let's Encrypt
-# sertifikasını mount etmek yine de tercih edilen yol.
 if [ ! -f "$TLS_CERT_FILE" ] || [ ! -f "$TLS_KEY_FILE" ]; then
     echo "TLS sertifikası bulunamadı, kendi imzalı sertifika üretiliyor"
     mkdir -p "$(dirname "$TLS_CERT_FILE")"
@@ -27,9 +24,17 @@ if [ ! -f "$TLS_CERT_FILE" ] || [ ! -f "$TLS_KEY_FILE" ]; then
     chmod 600 "$TLS_KEY_FILE"
 fi
 
-envsubst < /etc/postfix/main.cf.template > /etc/postfix/main.cf
+envsubst '$MAIL_DOMAIN $MX_HOSTNAME $INGEST_HOST $INGEST_LMTP_PORT $INGEST_MAP_PORT $MESSAGE_SIZE_LIMIT $TLS_CERT_FILE $TLS_KEY_FILE' \
+    < /etc/mailtester/main.cf.template > /etc/postfix/main.cf
 
-postfix check
+postconf -F '*/*/chroot=n'
+
+if ! postfix -c /etc/postfix check 2>&1; then
+    echo "postfix check başarısız, üretilen config:" >&2
+    cat /etc/postfix/main.cf >&2
+    exit 1
+fi
+
 echo "mx başlıyor: $MX_HOSTNAME ($MAIL_DOMAIN) -> lmtp:$INGEST_HOST:$INGEST_LMTP_PORT"
 
 exec /usr/sbin/postfix start-fg
