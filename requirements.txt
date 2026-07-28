@@ -2,7 +2,6 @@ fastapi
 uvicorn
 pymongo
 dnspython
-imapclient
 python-dotenv
 email-validator
 cryptography
