@@ -1,8 +1,16 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   redis:
     image: redis:7
     container_name: mailtester-redis
     restart: unless-stopped
+    mem_limit: 256m
+    logging: *default-logging
 
   mongo:
     image: mongo:7
@@ -15,14 +23,46 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - mongo_data:/data/db
-    ports:
-      - "27018:27017"
+    mem_limit: 1g
+    logging: *default-logging
 
   spamassassin:
     image: axllent/spamassassin:latest
     container_name: mailtester-spamassassin
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: 2.0
+    logging: *default-logging
 
+  # Dünyaya açık tek servis. Mail alır, LMTP ile ingest'e teslim eder.
+  # Reverse proxy arkasına KOYMUYORUZ: gerçek gönderen IP'si analizin ana girdisi.
+  mx:
+    build:
+      context: .
+      dockerfile: mx/Dockerfile
+    container_name: mailtester-mx
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - ingest
+    ports:
+      - "25:25"
+    mem_limit: 128m
+    logging: *default-logging
+
+  ingest:
+    build: .
+    container_name: mailtester-ingest
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+      - redis
+    mem_limit: 256m
+    logging: *default-logging
+    command: python -m src.ingest.main
 
   api:
     build: .
@@ -35,6 +75,8 @@ services:
       - redis
     ports:
       - "127.0.0.1:8000:8000"
+    mem_limit: 512m
+    logging: *default-logging
     command: >
       uvicorn src.api.main:app
       --host 0.0.0.0
@@ -52,7 +94,10 @@ services:
       - mongo
       - redis
       - spamassassin
-    command: celery -A src.worker.celery_app.celery_app worker -l INFO -P solo
+    mem_limit: 1g
+    cpus: 2.0
+    logging: *default-logging
+    command: celery -A src.worker.celery_app.celery_app worker -l INFO -c 4
 
 volumes:
   mongo_data:
