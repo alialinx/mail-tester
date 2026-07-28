@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 import gridfs
 
 from src.config import MAIL_DOMAIN, MESSAGE_SIZE_LIMIT
-from src.db.cache import address_key, get_cache, publish_status
 from src.db.db import get_db
 from src.ingest.connection import get_connection_info
 
@@ -13,6 +12,11 @@ from src.ingest.connection import get_connection_info
 def store_message(to_address: str, mail_from: str, raw: bytes) -> str:
     db = get_db()
     fs = gridfs.GridFS(db, collection="raw_mails")
+
+    test_email = db.test_emails.find_one(
+        {"to_address": to_address},
+        {"created_ip": 1, "owner_user_id": 1}
+    ) or {}
 
     msg = email.message_from_bytes(raw)
     connection = get_connection_info(msg)
@@ -29,23 +33,28 @@ def store_message(to_address: str, mail_from: str, raw: bytes) -> str:
         "connection": connection,
         "subject": msg.get("Subject"),
         "message_id": msg.get("Message-ID"),
+        "created_ip": test_email.get("created_ip"),
+        "owner_user_id": test_email.get("owner_user_id"),
+        "analysis_started_at": None,
+        "analysis_id": None,
+        "analyzed_at": None,
+        "last_error": None,
     }
 
     inserted = db.mail_events.insert_one(event)
 
     db.test_emails.update_one(
         {"to_address": to_address},
-        {"$set": {
-            "status": "received",
-            "receiver_at": now,
-            "mail_event_id": str(inserted.inserted_id),
-            "last_error": None,
-        }}
+        {
+            "$set": {
+                "status": "received",
+                "receiver_at": now,
+                "last_mail_event_id": str(inserted.inserted_id),
+                "last_error": None,
+            },
+            "$inc": {"mail_count": 1},
+        }
     )
-
-    get_cache().delete(address_key(to_address))
-
-    publish_status(to_address, "received")
 
     return str(inserted.inserted_id)
 
