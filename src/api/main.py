@@ -1,5 +1,5 @@
 # app/main.py
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security import HTTPBasic
 from starlette.middleware.cors import CORSMiddleware
@@ -38,9 +38,5 @@ app.add_middleware(
 )
 
 # Router
-router = APIRouter()
-
-app = FastAPI(title="Mail Tester API")
-
 app.include_router(mail_tests.router)
 app.include_router(auth.router)
