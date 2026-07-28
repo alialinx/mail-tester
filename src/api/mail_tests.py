@@ -40,7 +40,6 @@ def generate_random(db=Depends(get_db), req_info=Depends(get_request_info), curr
 
     cache = get_cache()
 
-    # Eski açık adresleri kapatıyoruz, Redis'ten de düşüyorlar ki mx artık kabul etmesin
     for previous in db.test_emails.find(query, {"to_address": 1}):
         cache.delete(address_key(previous["to_address"]))
 
@@ -64,8 +63,6 @@ def generate_random(db=Depends(get_db), req_info=Depends(get_request_info), curr
 
     db.test_emails.insert_one(doc)
 
-    # Adresi mx'in göreceği yere yazıyoruz. TTL bitince Postfix o adresi RCPT
-    # aşamasında reddediyor, ayrıca temizlik yapmamız gerekmiyor.
     cache.set(address_key(to_address), "1", ex=TEST_ADDRESS_TTL_MINUTES * 60)
 
     return {"result": to_address, "expires_at": expires_at, "expires_in": TEST_ADDRESS_TTL_MINUTES * 60}

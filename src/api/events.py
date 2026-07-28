@@ -19,14 +19,11 @@ def format_event(status: str) -> str:
 
 @router.get("/events/{to_address}", tags=["result"])
 def stream_status(to_address: str, db=Depends(get_db)):
-    """Durumu tarayıcıya push ediyoruz. Worker Redis'e yayınlıyor, biz iletiyoruz."""
-
     def event_stream():
         pubsub = get_cache().pubsub(ignore_subscribe_messages=True)
         pubsub.subscribe(event_channel(to_address))
 
         try:
-            # Bağlantı kurulmadan önce mail gelmiş olabilir, mevcut durumu bir kez gönderiyoruz
             test_email = db.test_emails.find_one({"to_address": to_address}, {"status": 1})
             status = test_email.get("status") if test_email else "not found"
 
@@ -41,7 +38,6 @@ def stream_status(to_address: str, db=Depends(get_db)):
                 message = pubsub.get_message(timeout=15)
 
                 if not message:
-                    # Proxy'lerin bağlantıyı kesmemesi için yorum satırı gönderiyoruz
                     yield ": keepalive\n\n"
                     continue
 

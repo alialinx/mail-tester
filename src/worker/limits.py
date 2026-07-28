@@ -4,7 +4,6 @@ from bson import ObjectId
 
 from src.api.utils.time import ensure_utc_aware
 
-# --- Time helpers ---
 def utc_now():
     return datetime.now(timezone.utc)
 
@@ -14,7 +13,6 @@ def utc_day_start(dt: datetime) -> datetime:
 def get_utc_tomorrow_start(current_time: datetime) -> datetime:
     return utc_day_start(current_time) + timedelta(days=1)
 
-# --- Read helpers ---
 def get_test_email_context(db, to_address: str) -> dict:
     return db.test_emails.find_one(
         {"to_address": to_address},
@@ -27,8 +25,6 @@ def get_test_email_context(db, to_address: str) -> dict:
     )
 
 
-
-# --- Quota helpers ---
 def reset_user_daily_quota_if_needed(db, user_id: str, current_time: datetime, ) -> int:
     user_document = db.users.find_one(
         {"_id": ObjectId(user_id)},

@@ -11,7 +11,6 @@ from src.db.db import get_db
 router = APIRouter()
 
 
-
 @router.post("/register", summary="Register a new user")
 def register(info:UserRegister, db=Depends(get_db), req_info=Depends(get_request_info)):
 
@@ -58,7 +57,6 @@ def register(info:UserRegister, db=Depends(get_db), req_info=Depends(get_request
         "user_id": str(result.inserted_id),
         "message": "User registered",
     }
-
 
 
 @router.post("/login", summary="Login a user")

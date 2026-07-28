@@ -9,8 +9,6 @@ from src.config import DNSBL_TIMEOUT, DNSBL_LIFETIME, DNSBL_MAX_LISTS, DNSBL_CON
 from src.config import DNS_RESOLVER, DNS_TIMEOUT, DNS_LIFETIME
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# --- Resolver ---
-# dnspython nameservers alanına IP istiyor, container adını bir kere çözüp saklıyoruz.
 _resolver_ip = {}
 
 def get_resolver_ip():
@@ -45,7 +43,6 @@ def check_spf_record(domain: str):
     except Exception:
         return False, []
 
-    # Domainde başka TXT kayıtları da olabilir, sadece v=spf1 ile başlayanı sayıyoruz
     spf_list = []
     for r in records:
         record = _txt_to_str(r)
@@ -100,7 +97,6 @@ def get_dkim_selector(record_list: list):
 
     m = re.search(r"(?:^|;)\s*s=([^;]+)", joined, flags=re.IGNORECASE)
     return m.group(1).strip() if m else None
-
 
 
 def check_dkim_record(domain: str, msg_raw: str):
@@ -212,7 +208,6 @@ def check_blacklists(ip: str) -> dict:
         q = f"{reversed_ip}.{dnsbl}"
         try:
             answer = resolver.resolve(q, "A")
-            # 127.255.255.x listeleme değil, "sorgun reddedildi" cevabıdır (public resolver kullanınca dönüyor)
             for rdata in answer:
                 if str(rdata.address).startswith("127.255.255."):
                     return dnsbl, "blocked"
@@ -291,7 +286,6 @@ def check_user_ctrl(domain: str, user: str):
             return {"message": str(e)}
 
 
-
 def is_public_ip(ip: str) -> bool:
     try:
         ip_obj = ipaddress.ip_address(ip)
@@ -303,7 +297,6 @@ def is_public_ip(ip: str) -> bool:
 def get_sender_ip(msg):
     received_headers = msg.get_all("Received", [])
 
-    # Received header'lar sondan başa okunur
     for header in reversed(received_headers):
         ips = re.findall(r'\[(\d{1,3}(?:\.\d{1,3}){3})\]', header)
 

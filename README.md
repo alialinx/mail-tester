@@ -5,11 +5,12 @@ Mail Tester is a self hosted service that checks the quality and deliverability 
 Users send an email to a temporary test address. The system receives the email on its own SMTP
 server, analyzes it in the background and returns a score with explanations.
 
+The code contains no comments on purpose. Every non obvious decision is explained in this file,
+so this is the place to look before changing anything.
+
 ---
 
 ## What This Tool Does
-
-Mail Tester helps you understand why an email may fail or succeed.
 
 You can test:
 
@@ -31,17 +32,17 @@ You can test:
 2. The system creates a unique temporary address, for example `test-a92bd12f98bc4@yourdomain.com`,
    stores it in MongoDB and writes it to Redis with a TTL.
 3. The user sends an email to that address.
-4. Our own Postfix (`mx` service) receives it on port 25. For every `RCPT TO` it asks the
-   `ingest` service whether the address is live. Unknown or expired addresses are rejected inside
-   the SMTP conversation, so spam never enters the queue.
-5. Postfix delivers the mail over LMTP to `ingest`, which stores the raw message in GridFS
-   together with the connection facts and queues the analysis task.
+4. `mx` receives it on port 25. For every `RCPT TO` it asks `ingest` whether the address is live.
+   Unknown or expired addresses are rejected inside the SMTP conversation, so mail to random
+   addresses never enters the queue or touches the disk.
+5. `mx` delivers the mail over LMTP to `ingest`, which stores the raw message in GridFS together
+   with the connection facts and queues the analysis task.
 6. The Celery worker analyzes the mail and stores the result.
 7. The browser gets the result pushed over SSE (`GET /events/{to_address}`) and reads it from
    `GET /result/{to_address}`.
 
-There is no IMAP polling. The address is single use: once a mail arrives it is removed from Redis
-and further mails to it are rejected.
+There is no IMAP polling. The address is single use: once a mail arrives it is deleted from Redis,
+so a second mail to the same address is rejected at `RCPT TO`.
 
 ---
 
@@ -58,95 +59,111 @@ internet ──25──▶ mx (Postfix)
                                        browser ◀── SSE ── api ◀── MongoDB ──┘
 ```
 
-| Service | Job |
-|---|---|
-| `mx` | Postfix. Receives mail on port 25. No mailbox, no alias, no SASL, no relay. |
-| `ingest` | LMTP server + Postfix recipient map. Stores the mail and triggers analysis. |
-| `api` | FastAPI. Address generation, results, SSE stream and the web interface. |
-| `worker` | Celery. Runs the analysis. |
-| `dns` | unbound. Own recursive resolver, required for correct blacklist results. |
-| `spamassassin` | spamd, reached over TCP. |
-| `mongo` | Test addresses, mail events, analysis results, raw mails (GridFS). |
-| `redis` | Celery broker, live test addresses, SSE pub/sub. |
+| Service | Job | Limits |
+|---|---|---|
+| `mx` | Postfix. Receives mail on port 25. No mailbox, no alias, no SASL, no relay. | 128m |
+| `ingest` | LMTP server plus Postfix recipient map. Stores the mail and triggers analysis. | 256m |
+| `api` | FastAPI. Address generation, results, SSE stream, optional web interface. | 512m |
+| `worker` | Celery. Runs the analysis. | 1g, 2 cpu |
+| `dns` | unbound. Own recursive resolver, required for correct blacklist results. | 128m |
+| `spamassassin` | spamd, reached over TCP. | 768m, 2 cpu |
+| `mongo` | Test addresses, mail events, analysis results, raw mails (GridFS). | 1g |
+| `redis` | Celery broker, live test addresses, SSE pub/sub. | 256m |
 
-### Why Postfix and not just a Python SMTP server
+### Why one process per container
 
-Postfix gives us a queue. If `ingest` or MongoDB is down for a moment, `ingest` answers `451` and
-Postfix keeps the mail in its queue and retries, so nothing is lost during a deploy. It also
-handles STARTTLS, protocol edge cases and rate limits.
+Each service has a different lifecycle, so they are kept apart on purpose:
 
-`mx` is **not** placed behind a reverse proxy on purpose. The real client IP from the TCP
-connection is the most valuable input of the whole analysis and a proxy would hide it.
+- `mx` must hold port 25 and stay up. Deploying API code must not interrupt mail reception, and
+  because Postfix queues what it cannot deliver yet, a restart of `ingest` loses nothing.
+- `ingest` parses attacker controlled MIME, which is the highest risk code in the project. It runs
+  with the smallest possible surface and can be isolated further without touching anything else.
+- `worker` is CPU bursty: a single analysis fires dozens of parallel DNS queries and a
+  SpamAssassin scan. Its memory and CPU caps keep it from starving neighbours on a shared host.
+- `mongo`, `redis`, `spamassassin` and `unbound` are third party images. Folding them into one
+  image would mean a process supervisor inside a container, which is the actual anti pattern.
 
-### Why there is no spam filtering on the MX
+`api` and `worker` share one image and differ only by their command, so the extra container costs
+almost nothing and buys independent restart and scaling.
 
-There is deliberately no DNSBL, postscreen or content filter in `mx/main.cf.template`. The job of
-a mail tester is to tell a blacklisted sender that it is blacklisted. If we rejected that sender,
-the user would never get a result. This is the opposite of how a normal mail server is configured.
-
----
-
-## Requirements
-
-- A server with **inbound TCP port 25 open**. Nothing else needs to be reachable from outside.
-- A domain whose MX record points to that server.
-- Docker and Docker Compose.
-
-Port 587 stays closed. This service only receives mail, so there is no submission port, no SASL
-and no IMAP, which means there are no credentials to brute force.
+Every service declares `mem_limit` and log rotation locally instead of relying on the Docker
+daemon configuration, so installing this stack never requires restarting the Docker daemon on a
+host that runs other projects.
 
 ---
 
-## DNS Records
+## Postfix Configuration Decisions
 
-For `example.com` on server `1.2.3.4`:
+`mx/main.cf.template` is short but almost every line is there for a reason.
 
-```
-example.com.          MX   10 mx.example.com.
-mx.example.com.       A       1.2.3.4
-example.com.          TXT     "v=spf1 -all"
-_dmarc.example.com.   TXT     "v=DMARC1; p=reject;"
-```
+**`virtual_mailbox_maps = static:all`** makes every address in the domain look deliverable, and
+the real decision is made by the recipient map. Postfix has to accept the address as listed before
+it consults an access map.
 
-The SPF and DMARC records above say "this domain never sends mail", which prevents anyone from
-spoofing it. If you later send mail from the domain, add the sending host to the SPF record.
+**Restriction order.** `reject_unauth_destination` comes first in
+`smtpd_recipient_restrictions`, before the recipient map. If the map ever answered `OK` for a
+foreign domain because of a bug, the first rule has already refused to relay. Open relay is the
+single worst failure mode for a mail server, so it is blocked structurally, not by correctness of
+our own code.
 
-Do not add a wildcard A or CNAME record. Setting the server's PTR record to `mx.example.com` is
-recommended but not required, since the service only receives mail.
+**`check_recipient_access tcp:...`** speaks the `tcp_table(5)` protocol. Postfix sends
+`get <address>` for every recipient and `ingest` answers `200 OK` or
+`200 REJECT test address is unknown or expired`. Values are URL encoded. The lookup hits Redis, not
+MongoDB, so it stays inside the SMTP timeout budget.
 
----
+**`lmtp_host_lookup = native`.** Postfix's LMTP client resolves hosts through DNS only and ignores
+`/etc/hosts` and NSS. In Docker that means container names cannot be resolved and delivery fails
+with `Host or domain name not found`. `native` switches it to `getaddrinfo`.
 
-## Quickstart
+**`inet_protocols = ipv4`.** With the default `all`, Postfix looks up an AAAA record for `ingest`,
+does not find one, treats it as a permanent error and bounces the mail.
 
-```bash
-cp .env.example .env
-# MAIL_DOMAIN, MX_HOSTNAME, MongoDB credentials and SECRET_KEY must be filled in
-docker compose build
-docker compose up -d
-docker compose logs -f mx ingest
-```
+**`default_transport = discard`.** This server must never send mail to the internet. Instead of
+generating a bounce for an undeliverable message, it is dropped silently, so the host can never
+become a backscatter source. The cost: if `ingest` stays down past the queue lifetime, the sender
+is never told, and the user only sees the address expire.
 
-Then open `http://127.0.0.1:8000/docs` for Swagger.
+**`maximal_queue_lifetime = 1h`.** Test addresses live for minutes, so keeping mail queued for the
+default five days is pointless.
 
-### Web interface
+**`smtpd_tls_received_header = yes`.** Off by default. Without it Postfix records only `ESMTPS` in
+its `Received` header and the TLS version and cipher are lost, which are exactly the values the
+report grades.
 
-This repository ships the API and the SMTP ingest only, without a user interface. If you mount a
-directory containing an `index.html` at `/app/public`, the API serves it from the root path on the
-same origin, so there is nothing to configure for CORS:
+**No `mydomain` or `myorigin`.** Their normal values use Postfix's own `$parameter` syntax, which
+`envsubst` would blank out while rendering the template. They are unnecessary for a server that
+never sends mail, so they are simply absent.
 
-```yml
-api:
-  volumes:
-    - /opt/my-frontend:/app/public:ro
-```
+**No DNSBL, postscreen or content filter.** This is deliberate and it is the opposite of a normal
+mail server. The job of a mail tester is to tell a blacklisted sender that it is blacklisted; if
+we rejected that sender at connect time the user would never get a result.
 
-Without that mount the API runs on its own and `/` returns a small JSON pointing at `/docs`.
-`GET /health` reports whether an interface is mounted.
+**`mx` is never routed through a reverse proxy.** The client IP from the TCP connection is the
+most valuable input of the whole analysis and a proxy would replace it with its own address.
 
-### STARTTLS certificate
+### Entrypoint
 
-If no certificate is mounted, `mx` generates a self signed one on startup. That is enough for
-opportunistic TLS, but mounting a real certificate is better:
+`mx/entrypoint.sh` renders the template and then fixes two container specific problems.
+
+**`envsubst` gets an explicit variable list.** Called without arguments it substitutes every `$`
+reference in the file, including Postfix's own parameters, and silently produces a broken config.
+
+**`postconf -F '*/*/chroot=n'`.** Debian runs `smtpd` and `lmtp` chrooted into
+`/var/spool/postfix`, where there is no `/etc/resolv.conf` and no `/etc/hosts`, so container names
+cannot be resolved and both the recipient map lookup and LMTP delivery fail with a 451. The
+container itself is the isolation boundary, so the chroot only gets in the way.
+
+**`postfix check` output is printed explicitly.** Because `maillog_file = /dev/stdout` routes
+Postfix's own messages through its logging service, a failing check would otherwise exit with
+status 1 and no visible reason.
+
+**The template lives in `/etc/mailtester/`,** not in `/etc/postfix/`, because Postfix scans its
+configuration directory and warns about any file it finds there with group or other write
+permission.
+
+**A self signed certificate is generated when none is mounted.** Most senders use opportunistic
+TLS, so this is enough to encrypt the connection and to report a TLS version. Mounting a real
+certificate is still preferable:
 
 ```yml
 mx:
@@ -157,41 +174,152 @@ mx:
 
 ---
 
+## DNS Resolution
+
+`dns/unbound.conf` defines a recursive resolver with **no forward zone**, and that is the whole
+point. Spamhaus and most other DNSBL providers refuse queries coming from public resolvers such as
+`8.8.8.8` and answer with an error code in `127.255.255.0/24`. Code that treats any successful
+answer as a listing then reports clean IP addresses as blacklisted, which destroys the credibility
+of the whole report.
+
+Two things follow from this:
+
+- Every DNS lookup in `src/processor/service.py` goes through `get_resolver()`, so SPF, DKIM,
+  DMARC, PTR, MX, A and DNSBL queries all use the same resolver.
+- A `127.255.255.x` answer is reported as `blocked`, never as `listed`. A check that could not run
+  says so instead of guessing.
+
+Access is restricted to private ranges, so the resolver is not reachable from outside the Docker
+network.
+
+---
+
+## Requirements
+
+- A server with **inbound TCP port 25 open**. Nothing else needs to be reachable from outside.
+- A domain whose MX record points to that server.
+- Docker and Docker Compose.
+
+Port 587 stays closed. This service only receives mail, so there is no submission port, no SASL and
+no IMAP, which means there are no credentials to brute force.
+
+---
+
+## DNS Records
+
+For `example.com` on server `1.2.3.4`:
+
+```
+example.com.          MX   10 mx.example.com.
+mx.example.com.       A       1.2.3.4
+www.example.com.      A       1.2.3.4
+example.com.          TXT     "v=spf1 -all"
+_dmarc.example.com.   TXT     "v=DMARC1; p=reject;"
+```
+
+The SPF and DMARC records say "this domain never sends mail", which stops anyone from spoofing it.
+If you later send mail from the domain, add the sending host to the SPF record.
+
+Do not add a wildcard A or CNAME record. Setting the server's PTR record to `mx.example.com` is
+recommended but not required, since the service only receives mail.
+
+---
+
+## Quickstart
+
+```bash
+cp .env.example .env
+docker compose build
+docker compose up -d
+docker compose logs -f mx ingest
+```
+
+`mx` prints the hostname, domain and LMTP target on startup, `ingest` prints its two listening
+ports. `GET /health` reports whether a web interface is mounted. Swagger is at `/docs`.
+
+### Environment variables
+
+| Variable | Meaning |
+|---|---|
+| `MAIL_DOMAIN` | Domain of the test addresses. Its MX record must point at this server. |
+| `MX_HOSTNAME` | Name Postfix announces and writes into `Received`. Defaults to `mx.$MAIL_DOMAIN`. |
+| `MONGODB_URI` | Full connection string. Keep the password alphanumeric so it needs no URL encoding. |
+| `MONGO_INITDB_ROOT_USERNAME`, `MONGO_INITDB_ROOT_PASSWORD`, `MONGO_DB_NAME` | Used when the database is first created. |
+| `REDIS_URL` | Live test addresses and SSE pub/sub. Kept on a different database number than Celery. |
+| `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` | Task queue. |
+| `INGEST_HOST`, `INGEST_LMTP_PORT`, `INGEST_MAP_PORT` | Where Postfix reaches the ingest service. |
+| `MESSAGE_SIZE_LIMIT` | Maximum accepted message size in bytes, enforced by both Postfix and ingest. |
+| `TEST_ADDRESS_TTL_MINUTES` | How long a generated address stays live. |
+| `TLS_CERT_FILE`, `TLS_KEY_FILE` | STARTTLS certificate paths. A self signed pair is generated if the files are missing. |
+| `DNS_RESOLVER` | Hostname of the unbound container. Leaving it empty falls back to the system resolver and makes blacklist results unreliable. |
+| `DNS_TIMEOUT`, `DNS_LIFETIME` | General DNS query budget. |
+| `DNSBL_TIMEOUT`, `DNSBL_LIFETIME`, `DNSBL_MAX_LISTS`, `DNSBL_CONCURRENCY` | Blacklist query budget and fan out. |
+| `SPAMD_HOST`, `SPAMD_PORT`, `SPAMD_TIMEOUT` | SpamAssassin daemon. |
+| `SSE_TIMEOUT` | Maximum lifetime of one SSE connection in seconds. |
+| `SECRET_KEY`, `ALGORITHM`, `TOKEN_EXPIRE_MINUTES` | Token signing. |
+| `WEB_ROOT` | Directory served at the root path. Defaults to `public`. |
+
+---
+
+## Web Interface
+
+This repository ships the API and the SMTP ingest only, without a user interface. Mount a directory
+containing an `index.html` at `/app/public` and the API serves it from the root path on the same
+origin, so there is nothing to configure for CORS:
+
+```yml
+api:
+  volumes:
+    - /opt/my-frontend:/app/public:ro
+```
+
+Without that mount the API runs on its own and `/` returns a small JSON pointing at `/docs`.
+
+Paths whose components begin with a dot are answered with 404. A mounted directory is usually a git
+working tree, and `StaticFiles` would otherwise serve `/.git/config` and let anybody reconstruct
+the repository from `/.git/objects`.
+
+---
+
 ## Deployment Specific Configuration
 
-`docker-compose.yml` is meant to run anywhere without changes. Anything that belongs to one
-particular server goes into `docker-compose.override.yml`, which Docker Compose merges
-automatically and which is not committed.
-
-An example for a host that already runs Traefik is shipped in the repo:
+`docker-compose.yml` is meant to run anywhere without changes. Anything belonging to one particular
+server goes into `docker-compose.override.yml`, which Docker Compose merges automatically and which
+is not committed. An example for a host that already runs Traefik ships as
+`docker-compose.traefik.yml`:
 
 ```bash
 cp docker-compose.traefik.yml docker-compose.override.yml
-# edit the Host() rule, entrypoint and certresolver names to match your Traefik setup
 docker compose up -d
 ```
 
-Joining Traefik's network does not change Traefik itself. Traefik discovers containers through
-the Docker API and reads their labels, so adding a labelled container is purely additive: no
-restart and no configuration change on the existing stack. Just keep the router and middleware
-names unique.
+Adjust the `Host()` rule, the entrypoint name, the certificate resolver name and the web root path
+to match your setup.
 
-`mx` is never routed through Traefik. It binds port 25 on the host directly, because a proxy
-would replace the sending server's IP address with its own.
+Joining Traefik's network does not change Traefik itself. It discovers containers through the
+Docker API and reads their labels, so adding a labelled container is purely additive: no restart
+and no configuration change on the existing stack. Keep the router and middleware names unique so
+they cannot collide with another project.
+
+The example does not override the `ports` entry. The base file already binds the API to
+`127.0.0.1`, Traefik reaches the container over its own network, and the local binding stays useful
+for debugging. Avoiding the override also avoids Compose's `!override` tag, which older versions do
+not understand.
+
+The example sets a content security policy of `default-src 'self'`. The analysed message is
+attacker controlled data, and if any of it ever escapes into the page, the policy stops it from
+executing. The interface uses no inline scripts or styles, so `'self'` is sufficient.
 
 ---
 
 ## Accounts
 
-Tests work without an account, limited per IP address per day. Registered users get their own
-daily quota, stored on the user document.
+Tests work without an account, limited per IP address per day. Registered users get their own daily
+quota, stored on the user document.
 
 - `POST /register` – JSON body with `email` and `password`
 - `POST /login` – form encoded `username` and `password`, returns a bearer token
 - `POST /generate` – accepts an optional `Authorization: Bearer <token>` header
-
-The web interface stores the token in `localStorage` and falls back to anonymous mode when the
-token expires.
 
 ---
 
@@ -205,6 +333,11 @@ token expires.
 - `analyzed` – analysis completed
 - `expired` – test address expired
 - `error` – an error occurred during processing
+
+`GET /events/{to_address}` streams the same values as server sent events. It emits the current
+status immediately on connect, because the mail may already have arrived before the browser
+subscribed, and then sends a comment line every fifteen seconds so proxies do not close an idle
+connection. The stream ends on `analyzed`, `error` or `expired`.
 
 ---
 
@@ -230,8 +363,9 @@ token expires.
 - 5–6.9 → Average
 - Below 5 → Poor
 
-A blacklist query that is refused by the provider is reported as `blocked`, not as `listed`.
-Telling somebody their IP is blacklisted when it is not would make the whole report untrustworthy.
+An SPF check only counts TXT records that start with `v=spf1`. A domain can have many TXT records
+for unrelated verifications, and treating any of them as an SPF record reports a missing policy as
+present.
 
 ---
 
@@ -244,17 +378,32 @@ mongosh
 
 use <your_database_name>
 
-// Auto-delete expired test email records (expires_at is set by the API)
 db.test_emails.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0 })
-
-// Ensure generated addresses are unique
 db.test_emails.createIndex({ to_address: 1 }, { unique: true })
-
-// Anonymous daily quota counts by IP and analysis date
 db.test_emails.createIndex({ created_ip: 1, analyzed_at: 1 })
 ```
 
-Analyzed records get their `expires_at` removed so the TTL index cannot delete a finished result.
+The TTL index removes abandoned test addresses. Analyzed records get their `expires_at` field
+removed so a finished result cannot be deleted by it. The third index serves the anonymous quota
+count, which would otherwise scan the collection as data grows.
+
+---
+
+## Local Testing Without DNS
+
+The mail path can be exercised on a laptop by pointing `mx` at a stub that speaks the same two
+protocols, so no domain and no port 25 are needed:
+
+```bash
+docker build -f mx/Dockerfile -t mx-test .
+docker run -d --rm --name mx-test \
+  -e MAIL_DOMAIN=example.com -e MX_HOSTNAME=mx.example.com \
+  --add-host=ingest:host-gateway -p 12525:25 mx-test
+```
+
+A stub answering `200 OK` on port 2500 and accepting LMTP on port 2400 is enough to verify
+recipient rejection, relay denial, STARTTLS and delivery. `docker logs mx-test` shows the outcome
+of each delivery attempt; a working setup ends with `status=sent (250 Message accepted)`.
 
 ---
 
@@ -262,5 +411,5 @@ Analyzed records get their `expires_at` removed so the TTL index cannot delete a
 
 1. `POST /generate` → temporary test address
 2. Send an email to that address
-3. Subscribe to `GET /events/{to_address}` (SSE) or poll `GET /result/{to_address}`
+3. Subscribe to `GET /events/{to_address}` or poll `GET /result/{to_address}`
 4. When the status is `analyzed`, read the result

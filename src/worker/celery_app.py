@@ -10,7 +10,6 @@ celery_app = Celery(
     backend=backend,
 )
 
-# 🔴 BU SATIR ŞART
 celery_app.autodiscover_tasks(["src.worker"])
 
 celery_app.conf.update(

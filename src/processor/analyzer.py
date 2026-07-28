@@ -33,13 +33,11 @@ class Analyzer:
         checks["dkim"] = {"status": "ok" if dkim_ok else "missing", "record": dkim_record, "domain":self.domain, "dkim_content":dkim_content}
 
 
-
         dmarc_ok, dmarc_record = check_dmarc_record(self.domain)
         if not dmarc_ok:
             self.score.minus(1,"DMARC record not found",code="DMARC_MISSING",severity="medium",
                 how_to_fix=f"Add a DMARC TXT record at _dmarc.{self.domain}. Start with p=none to monitor, then enforce.",)
         checks["dmarc"] = {"status": "ok" if dmarc_ok else "missing", "record": dmarc_record, "domain":self.domain}
-
 
 
         headers = dict(self.msg.items())
@@ -100,8 +98,6 @@ class Analyzer:
         else:
             checks["rdns"] = {"success": None,"hostname": None,"status": "unknown","skipped": True,            }
             checks["blacklists"] = {"checked": 0, "results": {}, "summary": {}, "skipped": True}
-
-
 
 
         try:

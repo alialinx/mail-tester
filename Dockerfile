@@ -5,7 +5,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Minimal system deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
@@ -17,5 +16,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app
 
-# compose override eder
 CMD ["python", "-c", "print('Container built')"]

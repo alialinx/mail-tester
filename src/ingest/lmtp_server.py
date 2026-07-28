@@ -43,7 +43,6 @@ def store_message(to_address: str, mail_from: str, raw: bytes) -> str:
         }}
     )
 
-    # Adres tek kullanımlık: aynı adrese ikinci mail artık RCPT aşamasında reddedilir
     get_cache().delete(address_key(to_address))
 
     publish_status(to_address, "received")
@@ -72,12 +71,10 @@ class MailHandler:
                 event_id = await asyncio.to_thread(store_message, to_address, mail_from, raw)
             except Exception as e:
                 print("mail kaydedilemedi:", to_address, repr(e), flush=True)
-                # 4xx dönüyoruz, Postfix kuyrukta tutup tekrar deniyor. Mail kaybolmuyor.
                 return "451 Temporary failure, try again"
 
             print("mail alındı:", to_address, event_id, flush=True)
 
-            # Task'ı burada import ediyoruz, celery_app'in ingest açılışını yavaşlatmaması için
             from src.worker.tasks import analyze_received_mail
             analyze_received_mail.delay(event_id)
 

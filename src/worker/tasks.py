@@ -72,7 +72,6 @@ def pull_and_analyze(self, to_address: str):
             "subject": msg.get("Subject"),
         }
 
-        # Analyzer taramayı çoktan yaptı, ikinci kez spamd'ye göndermiyoruz
         result["spamassassin"] = result["checks"]["spamassassin"]
         result["owner"] = {
             "type": "user" if email_context.get("owner_user_id") else "anonymous",
@@ -117,7 +116,6 @@ def pull_and_analyze(self, to_address: str):
 
 @celery_app.task(bind=True, max_retries=3)
 def analyze_received_mail(self, mail_event_id: str):
-    """ingest maili teslim aldıktan sonra çağrılır. IMAP yok, bekleme yok."""
     db = get_db()
 
     event = db.mail_events.find_one({"_id": ObjectId(mail_event_id)})
@@ -149,7 +147,6 @@ def analyze_received_mail(self, mail_event_id: str):
 
         connection = event.get("connection") or {}
 
-        # Gönderen IP'si artık tahmin değil: SMTP bağlantısının kendisinden geliyor.
         sender_ip = connection.get("client_ip") or get_sender_ip(msg)
         domain = get_sender_domain(msg)
 
@@ -159,7 +156,6 @@ def analyze_received_mail(self, mail_event_id: str):
         result["spamassassin"] = result["checks"]["spamassassin"]
         result["connection"] = connection
 
-        # Analyzer meta içine message_detail koyuyor, ezmeyip üstüne ekliyoruz
         result["meta"].update({
             "to_address": to_address,
             "received_at": event["received_at"].isoformat(),

@@ -26,8 +26,6 @@ services:
     mem_limit: 1g
     logging: *default-logging
 
-  # Kendi recursive resolver'ımız. DNSBL sağlayıcıları public resolver'lardan
-  # gelen sorguları engellediği için 8.8.8.8 ile doğru sonuç alınamıyor.
   dns:
     build:
       context: .
@@ -45,8 +43,6 @@ services:
     cpus: 2.0
     logging: *default-logging
 
-  # Dünyaya açık tek servis. Mail alır, LMTP ile ingest'e teslim eder.
-  # Reverse proxy arkasına KOYMUYORUZ: gerçek gönderen IP'si analizin ana girdisi.
   mx:
     build:
       context: .

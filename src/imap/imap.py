@@ -21,7 +21,6 @@ def imap_conn():
         return e
 
 
-
 def get_email_from_imap(to_address):
     imap = imap_conn()
 

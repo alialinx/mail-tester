@@ -1,12 +1,5 @@
 import re
 
-# Kendi Postfix'imizin eklediği EN ÜSTTEKİ Received header'ı güvenilir kaynaktır:
-# ilk hop biziz. Altındaki header'ları gönderen uydurmuş olabilir, onlara bakmıyoruz.
-# Örnek:
-# Received: from mail.sender.com (mail.sender.com [1.2.3.4])
-#     (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits))
-#     by mx.example.com (Postfix) with ESMTPS id ABC123
-#     for <test-1234@example.com>; Mon, 28 Jul 2026 10:00:00 +0000
 
 HELO_PATTERN = re.compile(r"^from\s+(\S+)", re.IGNORECASE)
 CLIENT_IP_PATTERN = re.compile(r"\[(\d{1,3}(?:\.\d{1,3}){3})\]")
@@ -42,7 +35,6 @@ def get_connection_info(msg) -> dict:
     protocol = PROTOCOL_PATTERN.search(top)
     if protocol:
         info["protocol"] = protocol.group(1).upper()
-        # ESMTPS / ESMTPSA -> bağlantı TLS ile geldi
         info["tls"] = info["protocol"].endswith("S") or info["protocol"].endswith("SA")
 
     tls = TLS_PATTERN.search(top)

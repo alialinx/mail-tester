@@ -18,7 +18,6 @@ def event_channel(to_address: str) -> str:
 
 
 def publish_status(to_address: str, status: str) -> None:
-    """Tarayıcıya SSE ile iletilecek durum değişikliği. Hata olursa akışı bozmuyoruz."""
     try:
         get_cache().publish(event_channel(to_address), status)
     except Exception as e:
