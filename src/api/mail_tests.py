@@ -141,7 +141,17 @@ def check_address(to_address: str, after: str = None, db=Depends(get_db)):
         return {"status": "error", "event_id": event_id, "detail": "analysis missing"}
 
     if event.get("last_error") == "daily_analyze_limit_exceeded":
-        return {"status": "limit", "event_id": event_id}
+        quota = get_quota_state(
+            db,
+            owner_user_id=event.get("owner_user_id"),
+            client_ip=event.get("created_ip"),
+        )
+
+        if quota["remaining"] <= 0:
+            return {"status": "limit", "event_id": event_id}
+
+        db.mail_events.update_one({"_id": event["_id"]}, {"$set": {"last_error": None}})
+        event["last_error"] = None
 
     if event.get("last_error"):
         return {"status": "error", "event_id": event_id, "detail": event["last_error"]}

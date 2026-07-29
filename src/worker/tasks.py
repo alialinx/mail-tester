@@ -42,7 +42,7 @@ def analyze_received_mail(self, mail_event_id: str):
         if not allowed:
             db.mail_events.update_one(
                 {"_id": ObjectId(mail_event_id)},
-                {"$set": {"last_error": "daily_analyze_limit_exceeded"}}
+                {"$set": {"last_error": "daily_analyze_limit_exceeded", "analysis_started_at": None}}
             )
             db.test_emails.update_one(
                 {"to_address": to_address},
