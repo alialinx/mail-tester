@@ -1,3 +1,5 @@
+from email.header import decode_header, make_header
+
 from src.processor.score import Score
 from src.processor.service import (
     check_spf_record,
@@ -7,6 +9,15 @@ from src.processor.service import (
     check_blacklists,
 )
 from src.worker.spamassassin_client import spamd_check
+
+
+def decode_header_value(value):
+    if not value:
+        return value
+    try:
+        return str(make_header(decode_header(value)))
+    except Exception:
+        return value
 
 
 class Analyzer:
@@ -40,7 +51,7 @@ class Analyzer:
         checks["dmarc"] = {"status": "ok" if dmarc_ok else "missing", "record": dmarc_record, "domain":self.domain}
 
 
-        headers = dict(self.msg.items())
+        headers = {name: decode_header_value(value) for name, value in self.msg.items()}
         header_check = {"status": "ok","missing_required": [],"missing_recommended": [],
             "raw": {
                 "from": headers.get("From"),
