@@ -161,7 +161,9 @@ def get_result(to_address: str, db=Depends(get_db)):
     )
 
     if not event:
-        return check_address(to_address, None, db)
+        if address_is_live(db, to_address):
+            return {"status": "waiting"}
+        return {"status": "expired"}
 
     analysis = read_analysis(db, event["analysis_id"])
     if not analysis:
