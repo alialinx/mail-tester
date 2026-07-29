@@ -29,18 +29,17 @@ def quota_payload(quota: dict) -> dict:
     }
 
 
-def get_address(db, to_address: str) -> dict:
-    test_email = db.test_emails.find_one({"to_address": to_address})
+def address_is_live(db, to_address: str) -> bool:
+    test_email = db.test_emails.find_one({"to_address": to_address}, {"expires_at": 1})
 
     if not test_email:
-        raise HTTPException(status_code=404, detail="Test address not found")
+        return False
 
     expires_at = test_email.get("expires_at")
     if expires_at and expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-    test_email["expired"] = bool(expires_at and expires_at < datetime.now(timezone.utc))
-    return test_email
+    return bool(expires_at and expires_at > datetime.now(timezone.utc))
 
 
 def newest_event(db, to_address: str, after: str = None) -> dict:
@@ -129,13 +128,12 @@ def generate_random(db=Depends(get_db), req_info=Depends(get_request_info), curr
 
 @router.get("/check/{to_address}", tags=["test"])
 def check_address(to_address: str, after: str = None, db=Depends(get_db)):
-    test_email = get_address(db, to_address)
     event = newest_event(db, to_address, after)
 
     if not event:
-        if test_email["expired"]:
-            return {"status": "expired"}
-        return {"status": "waiting"}
+        if address_is_live(db, to_address):
+            return {"status": "waiting"}
+        return {"status": "expired"}
 
     event_id = str(event["_id"])
 
