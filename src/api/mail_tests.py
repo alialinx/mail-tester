@@ -79,9 +79,6 @@ def generate_random(db=Depends(get_db), req_info=Depends(get_request_info), curr
 
     quota = get_quota_state(db, owner_user_id, created_ip)
 
-    if quota["remaining"] <= 0:
-        raise HTTPException(status_code=429, detail="Daily test limit reached")
-
     now = datetime.now(timezone.utc)
     to_address = generate_random_email()
 
@@ -142,6 +139,9 @@ def check_address(to_address: str, after: str = None, db=Depends(get_db)):
         if analysis:
             return {"status": "analyzed", "event_id": event_id, "result": analysis}
         return {"status": "error", "event_id": event_id, "detail": "analysis missing"}
+
+    if event.get("last_error") == "daily_analyze_limit_exceeded":
+        return {"status": "limit", "event_id": event_id}
 
     if event.get("last_error"):
         return {"status": "error", "event_id": event_id, "detail": event["last_error"]}
