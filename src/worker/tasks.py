@@ -63,7 +63,14 @@ def analyze_received_mail(self, mail_event_id: str):
         sender_ip = connection.get("client_ip") or get_sender_ip(msg)
         domain = get_sender_domain(msg)
 
-        analyzer = Analyzer(email_message=msg, domain=domain, sender_ip=sender_ip)
+        analyzer = Analyzer(
+            email_message=msg,
+            domain=domain,
+            sender_ip=sender_ip,
+            raw_email=raw,
+            connection=connection,
+            envelope_from=event.get("mail_from"),
+        )
         result = analyzer.analyze()
 
         result["spamassassin"] = result["checks"]["spamassassin"]

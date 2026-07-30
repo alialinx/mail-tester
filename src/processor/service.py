@@ -3,10 +3,13 @@ import re
 import socket
 import dns.resolver
 import smtplib
+import dkim
+import spf
 
 
 from src.config import DNSBL_TIMEOUT, DNSBL_LIFETIME, DNSBL_MAX_LISTS, DNSBL_CONCURRENCY
 from src.config import DNS_RESOLVER, DNS_TIMEOUT, DNS_LIFETIME
+from src.config import SPF_TIMEOUT, DKIM_MIN_KEY_BITS, URIBL_MAX_DOMAINS
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 _resolver_ip = {}
@@ -35,6 +38,47 @@ def get_resolver(timeout: float = None, lifetime: float = None) -> dns.resolver.
     resolver.timeout = timeout or DNS_TIMEOUT
     resolver.lifetime = lifetime or DNS_LIFETIME
     return resolver
+
+
+def spf_dns_lookup(name, qtype, tcpfallback=True, timeout=30):
+    records = []
+
+    try:
+        answers = get_resolver().resolve(name, qtype)
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+        return records
+    except (dns.resolver.NoNameservers, dns.exception.Timeout) as e:
+        raise spf.TempError("DNS " + str(e))
+
+    for rdata in answers:
+        if qtype in ("A", "AAAA"):
+            records.append(((name, qtype), rdata.address))
+        elif qtype == "MX":
+            records.append(((name, qtype), (rdata.preference, rdata.exchange)))
+        elif qtype == "PTR":
+            records.append(((name, qtype), rdata.target.to_text(True)))
+        elif qtype in ("TXT", "SPF"):
+            records.append(((name, qtype), rdata.strings))
+
+    return records
+
+
+def dkim_dns_lookup(name, timeout=5):
+    if isinstance(name, bytes):
+        name = name.decode("ascii", errors="ignore")
+
+    try:
+        answers = get_resolver().resolve(name.rstrip("."), "TXT")
+    except Exception:
+        return None
+
+    for rdata in answers:
+        return b"".join(rdata.strings)
+
+    return None
+
+
+spf.DNSLookup = spf_dns_lookup
 
 
 def check_spf_record(domain: str):
@@ -88,46 +132,76 @@ def get_dkim_content(msg_raw: str):
     return record_list
 
 
-def get_dkim_selector(record_list: list):
+def get_dkim_tag(record_list: list, tag: str):
     if not record_list:
         return None
 
-    clean_record_list = [x.lstrip(" \t") for x in record_list]
-    joined = " ".join([x.strip() for x in clean_record_list])
+    joined = " ".join([x.lstrip(" \t").strip() for x in record_list])
 
-    m = re.search(r"(?:^|;)\s*s=([^;]+)", joined, flags=re.IGNORECASE)
+    m = re.search(r"(?:^|[;:])\s*" + tag + r"=([^;]+)", joined, flags=re.IGNORECASE)
     return m.group(1).strip() if m else None
 
 
-def check_dkim_record(domain: str, msg_raw: str):
-    dkim_record = None
+def check_spf(domain: str, sender_ip: str = None, envelope_from: str = None, helo: str = None) -> dict:
+    found, records = check_spf_record(domain)
 
-    dkim_content = get_dkim_content(msg_raw)
-    clean_dkim_content = [x.lstrip(" \t") for x in dkim_content] if dkim_content else []
+    check = {"status": "ok" if found else "missing", "record": records, "domain": domain,
+             "result": None, "explanation": None, "checked_ip": sender_ip, "checked_sender": None}
 
+    if not found or not sender_ip:
+        return check
 
-    if not dkim_content:
-        return False, None, []
-
-    selector = get_dkim_selector(dkim_content)
-
-    if not selector:
-        return False, None, clean_dkim_content
-
-    dkim_domain = f"{selector}._domainkey.{domain}"
+    check["checked_sender"] = envelope_from or f"postmaster@{domain}"
 
     try:
-        answer = get_resolver().resolve(dkim_domain, "TXT")
-    except Exception:
-        return False, None, clean_dkim_content
+        result, explanation = spf.check2(i=sender_ip, s=check["checked_sender"], h=helo or domain, timeout=SPF_TIMEOUT)
+    except Exception as e:
+        check["result"] = "temperror"
+        check["explanation"] = repr(e)
+        return check
 
-    for dkim in answer:
-        dkim_record = dkim.to_text()
+    check["result"] = result
+    check["explanation"] = explanation
+    return check
 
-    if not dkim_record:
-        return False, None, clean_dkim_content
 
-    return True, dkim_record, clean_dkim_content
+def check_dkim(domain: str, raw_email) -> dict:
+    raw_bytes = raw_email if isinstance(raw_email, bytes) else _as_raw_string(raw_email).encode("utf-8", errors="replace")
+    dkim_content = get_dkim_content(raw_bytes.decode("utf-8", errors="replace"))
+    clean_dkim_content = [x.lstrip(" \t") for x in dkim_content] if dkim_content else []
+
+    check = {"status": "missing", "record": None, "domain": domain, "dkim_content": clean_dkim_content,
+             "selector": None, "signing_domain": None, "algorithm": None, "verified": None, "error": None}
+
+    if not dkim_content:
+        return check
+
+    check["selector"] = get_dkim_tag(clean_dkim_content, "s")
+    check["signing_domain"] = get_dkim_tag(clean_dkim_content, "d")
+    check["algorithm"] = get_dkim_tag(clean_dkim_content, "a")
+
+    if not check["selector"]:
+        check["status"] = "broken"
+        return check
+
+    signing_domain = check["signing_domain"] or domain
+
+    record = dkim_dns_lookup(f"{check['selector']}._domainkey.{signing_domain}")
+
+    if not record:
+        check["status"] = "no_key"
+        return check
+
+    check["record"] = record.decode("utf-8", errors="replace")
+    check["status"] = "ok"
+
+    try:
+        check["verified"] = bool(dkim.verify(raw_bytes, dnsfunc=dkim_dns_lookup, minkey=DKIM_MIN_KEY_BITS))
+    except Exception as e:
+        check["verified"] = False
+        check["error"] = repr(e)
+
+    return check
 
 
 def _txt_to_str(rdata) -> str:
@@ -136,32 +210,106 @@ def _txt_to_str(rdata) -> str:
     except Exception:
         return str(rdata).strip('"')
 
+def organizational_domain(domain: str) -> str:
+    labels = (domain or "").strip(".").lower().split(".")
+    return ".".join(labels[-2:]) if len(labels) >= 2 else (domain or "").lower()
+
+
+def domains_aligned(from_domain: str, auth_domain: str, mode: str) -> bool:
+    if not from_domain or not auth_domain:
+        return False
+
+    a = from_domain.strip(".").lower()
+    b = auth_domain.strip(".").lower()
+
+    if a == b:
+        return True
+    if (mode or "r").lower() == "s":
+        return False
+
+    return organizational_domain(a) == organizational_domain(b)
+
+
+def parse_dmarc_tags(record: str) -> dict:
+    tags = {}
+
+    for part in (record or "").split(";"):
+        if "=" not in part:
+            continue
+        name, value = part.split("=", 1)
+        tags[name.strip().lower()] = value.strip()
+
+    return tags
+
+
 def check_dmarc_record(domain: str):
-    dmarc_domain = f"_dmarc.{domain}".strip(".")
+    candidate = (domain or "").strip(".")
 
-    try:
-        answers = get_resolver().resolve(dmarc_domain, "TXT")
-    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers, dns.exception.Timeout):
+    while candidate.count(".") >= 1:
+        try:
+            answers = get_resolver().resolve(f"_dmarc.{candidate}", "TXT")
+            record = next((t for t in [_txt_to_str(r) for r in answers] if t.lower().startswith("v=dmarc1")), None)
+            if record:
+                return True, record, candidate
+        except Exception:
+            pass
 
-        return False, None
-    except Exception:
-        return False, None
+        if candidate.count(".") == 1:
+            break
+        candidate = candidate.split(".", 1)[1]
+
+    return False, None, None
 
 
-    records = [_txt_to_str(r) for r in answers]
-    dmarc = next((t for t in records if "v=DMARC1" in t), None)
+def check_dmarc(domain: str, spf_check: dict, dkim_check: dict) -> dict:
+    found, record, record_domain = check_dmarc_record(domain)
+    tags = parse_dmarc_tags(record)
 
-    return (dmarc is not None), dmarc
+    check = {"status": "ok" if found else "missing", "record": record, "domain": domain,
+             "record_domain": record_domain, "policy": tags.get("p"), "subdomain_policy": tags.get("sp"),
+             "percent": tags.get("pct"), "reports_to": tags.get("rua"),
+             "adkim": (tags.get("adkim") or "r").lower(), "aspf": (tags.get("aspf") or "r").lower(),
+             "spf_aligned": False, "dkim_aligned": False, "result": "fail"}
+
+    spf_passed = (spf_check or {}).get("result") == "pass"
+    dkim_passed = (dkim_check or {}).get("verified") is True
+
+    if spf_passed:
+        spf_domain = _sender_domain_of((spf_check or {}).get("checked_sender")) or domain
+        check["spf_aligned"] = domains_aligned(domain, spf_domain, check["aspf"])
+
+    if dkim_passed:
+        check["dkim_aligned"] = domains_aligned(domain, (dkim_check or {}).get("signing_domain"), check["adkim"])
+
+    if not found:
+        check["result"] = "none"
+    elif check["spf_aligned"] or check["dkim_aligned"]:
+        check["result"] = "pass"
+
+    return check
+
+
+def _sender_domain_of(address: str):
+    if not address or "@" not in address:
+        return None
+    return address.rsplit("@", 1)[-1].strip().lower()
 
 
 def check_rdns(ip: str) -> dict:
     reversed_ip = ".".join(ip.split(".")[::-1]) + ".in-addr.arpa"
+
     try:
         answer = get_resolver().resolve(reversed_ip, "PTR")
         hostname = str(answer[0]).rstrip(".")
-        return {"success": True, "hostname": hostname}
     except Exception:
-        return {"success": False, "hostname": None}
+        return {"success": False, "hostname": None, "forward_ips": [], "matches": False}
+
+    try:
+        forward_ips = [str(r.address) for r in get_resolver().resolve(hostname, "A")]
+    except Exception:
+        forward_ips = []
+
+    return {"success": True, "hostname": hostname, "forward_ips": forward_ips, "matches": ip in forward_ips}
 
 DNSBL_LISTS = [
     "zen.spamhaus.org",
@@ -192,6 +340,57 @@ DNSBL_LISTS = [
     "dnsbl.anticaptcha.net",
     "all.s5h.net",
 ]
+
+DOMAIN_DNSBL_LISTS = [
+    "dbl.spamhaus.org",
+    "multi.uribl.com",
+    "multi.surbl.org",
+    "black.uribl.com",
+]
+
+
+def _dnsbl_status(addresses: list) -> str:
+    for address in addresses:
+        if address.startswith("127.255.255.") or address == "127.0.0.1":
+            return "blocked"
+    return "listed"
+
+
+def check_domain_blacklists(domains: list) -> dict:
+    targets = [d for d in dict.fromkeys(domains or []) if d][:URIBL_MAX_DOMAINS]
+    summary = {"listed": 0, "not_listed": 0, "timeout": 0, "blocked": 0, "error": 0}
+
+    if not targets:
+        return {"checked": 0, "results": {}, "listed": [], "summary": summary}
+
+    resolver = get_resolver(timeout=DNSBL_TIMEOUT, lifetime=DNSBL_LIFETIME)
+
+    def query_one(domain: str, dnsbl: str):
+        try:
+            answer = resolver.resolve(f"{domain}.{dnsbl}", "A")
+            return domain, dnsbl, _dnsbl_status([str(r.address) for r in answer])
+        except dns.resolver.NXDOMAIN:
+            return domain, dnsbl, "not_listed"
+        except (dns.resolver.Timeout, dns.exception.Timeout):
+            return domain, dnsbl, "timeout"
+        except Exception:
+            return domain, dnsbl, "error"
+
+    results = {}
+    listed = []
+    jobs = [(domain, dnsbl) for domain in targets for dnsbl in DOMAIN_DNSBL_LISTS]
+
+    with ThreadPoolExecutor(max_workers=max(1, DNSBL_CONCURRENCY)) as ex:
+        futures = [ex.submit(query_one, domain, dnsbl) for domain, dnsbl in jobs]
+        for fut in as_completed(futures):
+            domain, dnsbl, status = fut.result()
+            results.setdefault(domain, {})[dnsbl] = status
+            summary[status] += 1
+            if status == "listed":
+                listed.append({"domain": domain, "list": dnsbl})
+
+    return {"checked": len(jobs), "results": results, "listed": listed, "summary": summary}
+
 
 def check_blacklists(ip: str) -> dict:
     if not ip:

@@ -1,4 +1,3 @@
-import os
 import re
 import socket
 
@@ -15,7 +14,7 @@ def spamd_check(raw_email: bytes, host: str = None, port: int = None, timeout: f
         s.settimeout(timeout)
 
         req = (
-            b"CHECK SPAMC/1.5\r\n"
+            b"REPORT SPAMC/1.5\r\n"
             b"Content-length: " + str(len(raw_email)).encode() + b"\r\n"
             b"\r\n" + raw_email
         )
