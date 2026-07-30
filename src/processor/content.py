@@ -120,6 +120,7 @@ def inspect_content(msg, subject: str = None) -> dict:
     return {
         "preview": visible_text[:20000],
         "plain": plain[:40000],
+        "html_text": html_text[:20000],
         "html": html[:80000],
         "has_plain": bool(plain.strip()),
         "has_html": bool(html.strip()),

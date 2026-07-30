@@ -67,9 +67,16 @@ def hash_password(password: str) -> str:
 oauth2_optional = OAuth2PasswordBearer(tokenUrl="/login", auto_error=False)
 
 
-def optional_current_user(token: str = Depends(oauth2_optional), db=Depends(get_db)):
+def optional_current_user(request: Request, token: str = Depends(oauth2_optional), db=Depends(get_db)):
+    from src.api.api_keys import resolve_api_key
+
+    api_key = resolve_api_key(request, db)
+    if api_key:
+        return {"user_id": api_key["user_id"], "api_key_id": str(api_key["_id"])}
+
     if not token:
         return None
+
     return current_user(token=token, db=db)
 
 

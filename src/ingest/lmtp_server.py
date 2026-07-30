@@ -15,7 +15,7 @@ def store_message(to_address: str, mail_from: str, raw: bytes) -> str:
 
     test_email = db.test_emails.find_one(
         {"to_address": to_address},
-        {"created_ip": 1, "owner_user_id": 1}
+        {"created_ip": 1, "owner_user_id": 1, "api_key_id": 1}
     ) or {}
 
     msg = email.message_from_bytes(raw)
@@ -35,6 +35,7 @@ def store_message(to_address: str, mail_from: str, raw: bytes) -> str:
         "message_id": msg.get("Message-ID"),
         "created_ip": test_email.get("created_ip"),
         "owner_user_id": test_email.get("owner_user_id"),
+        "api_key_id": test_email.get("api_key_id"),
         "analysis_started_at": None,
         "analysis_id": None,
         "analyzed_at": None,

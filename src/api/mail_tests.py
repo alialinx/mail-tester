@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from src.api.functions import get_request_info, optional_current_user
 from src.api.rate_limit import enforce
 from src.config import GENERATE_RATE_LIMIT, GENERATE_RATE_WINDOW, TEST_ADDRESS_TTL_MINUTES
+from src.config import CHECK_RATE_LIMIT, CHECK_RATE_WINDOW, READ_RATE_LIMIT, READ_RATE_WINDOW
 from src.db.cache import address_key, get_cache
 from src.db.db import get_db
 from src.processor.generator import generate_random_email
@@ -17,6 +18,10 @@ router = APIRouter()
 
 def owner_of(current_user) -> str:
     return str(current_user["user_id"]) if current_user else None
+
+
+def key_of(current_user) -> str:
+    return (current_user or {}).get("api_key_id")
 
 
 def quota_payload(quota: dict) -> dict:
@@ -64,7 +69,7 @@ def read_analysis(db, analysis_id: str) -> dict:
 
 @router.get("/limits", tags=["test"])
 def get_limits(db=Depends(get_db), req_info=Depends(get_request_info), current_user=Depends(optional_current_user)):
-    quota = get_quota_state(db, owner_of(current_user), req_info.get("ip"))
+    quota = get_quota_state(db, owner_of(current_user), req_info.get("ip"), key_of(current_user))
     payload = quota_payload(quota)
     payload["address_ttl_seconds"] = TEST_ADDRESS_TTL_MINUTES * 60
     return payload
@@ -74,10 +79,11 @@ def get_limits(db=Depends(get_db), req_info=Depends(get_request_info), current_u
 def generate_random(db=Depends(get_db), req_info=Depends(get_request_info), current_user=Depends(optional_current_user)):
     created_ip = req_info.get("ip")
     owner_user_id = owner_of(current_user)
+    api_key_id = key_of(current_user)
 
-    enforce("generate", owner_user_id or created_ip, GENERATE_RATE_LIMIT, GENERATE_RATE_WINDOW)
+    enforce("generate", api_key_id or owner_user_id or created_ip, GENERATE_RATE_LIMIT, GENERATE_RATE_WINDOW)
 
-    quota = get_quota_state(db, owner_user_id, created_ip)
+    quota = get_quota_state(db, owner_user_id, created_ip, api_key_id)
 
     now = datetime.now(timezone.utc)
     to_address = generate_random_email()
@@ -104,6 +110,7 @@ def generate_random(db=Depends(get_db), req_info=Depends(get_request_info), curr
         "expires_at": expires_at,
         "created_ip": created_ip,
         "owner_user_id": owner_user_id,
+        "api_key_id": api_key_id,
         "mail_count": 0,
         "receiver_at": None,
         "last_mail_event_id": None,
@@ -124,7 +131,9 @@ def generate_random(db=Depends(get_db), req_info=Depends(get_request_info), curr
 
 
 @router.get("/check/{to_address}", tags=["test"])
-def check_address(to_address: str, after: str = None, db=Depends(get_db)):
+def check_address(to_address: str, after: str = None, db=Depends(get_db), req_info=Depends(get_request_info)):
+    enforce("check", req_info.get("ip"), CHECK_RATE_LIMIT, CHECK_RATE_WINDOW)
+
     event = newest_event(db, to_address, after)
 
     if not event:
@@ -145,6 +154,7 @@ def check_address(to_address: str, after: str = None, db=Depends(get_db)):
             db,
             owner_user_id=event.get("owner_user_id"),
             client_ip=event.get("created_ip"),
+            api_key_id=event.get("api_key_id"),
         )
 
         if quota["remaining"] <= 0:
@@ -164,7 +174,9 @@ def check_address(to_address: str, after: str = None, db=Depends(get_db)):
 
 
 @router.get("/result/{to_address}", tags=["test"])
-def get_result(to_address: str, db=Depends(get_db)):
+def get_result(to_address: str, db=Depends(get_db), req_info=Depends(get_request_info)):
+    enforce("result", req_info.get("ip"), READ_RATE_LIMIT, READ_RATE_WINDOW)
+
     event = db.mail_events.find_one(
         {"to_address": to_address, "analysis_id": {"$ne": None}},
         sort=[("_id", -1)]

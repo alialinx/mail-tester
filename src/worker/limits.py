@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 
 from src.api.utils.time import ensure_utc_aware
-from src.config import ANON_DAILY_LIMIT, USER_DAILY_LIMIT
+from src.config import ANON_DAILY_LIMIT, USER_DAILY_LIMIT, API_DAILY_LIMIT
 
 
 def utc_now():
@@ -43,47 +43,55 @@ def claim_mail_event(db, event_id) -> bool:
     return claimed.modified_count == 1
 
 
-def consume_daily_quota(db, owner_user_id: str = None, client_ip: str = None) -> bool:
-    now = utc_now()
-
+def quota_holder(db, owner_user_id: str = None, api_key_id: str = None):
+    if api_key_id:
+        return db.api_keys, {"_id": ObjectId(api_key_id)}, "quota", API_DAILY_LIMIT, "api_key"
     if owner_user_id:
-        user = db.users.find_one({"_id": ObjectId(owner_user_id)}, {"quota": 1}) or {}
-        quota = (user.get("quota") or {}).get("analyze", {}) or {}
+        return db.users, {"_id": ObjectId(owner_user_id)}, "quota.analyze", USER_DAILY_LIMIT, "user"
+    return None, None, None, None, "anonymous"
 
-        daily_limit = int(quota.get("daily_limit", USER_DAILY_LIMIT))
+
+def consume_daily_quota(db, owner_user_id: str = None, client_ip: str = None, api_key_id: str = None) -> bool:
+    now = utc_now()
+    collection, query, path, default_limit, scope = quota_holder(db, owner_user_id, api_key_id)
+
+    if collection is not None:
+        holder = collection.find_one(query, {path.split(".")[0]: 1}) or {}
+        quota = holder
+        for part in path.split("."):
+            quota = (quota or {}).get(part) or {}
+
+        daily_limit = int(quota.get("daily_limit", default_limit))
         daily_used = int(quota.get("daily_used", 0))
         reset_at = ensure_utc_aware(quota.get("reset_at"))
 
         if (reset_at is None) or (reset_at <= now):
             daily_used = 0
-            db.users.update_one(
-                {"_id": ObjectId(owner_user_id)},
-                {"$set": {
-                    "quota.analyze.daily_used": 0,
-                    "quota.analyze.reset_at": get_utc_tomorrow_start(now),
-                }}
-            )
+            collection.update_one(query, {"$set": {
+                f"{path}.daily_used": 0,
+                f"{path}.reset_at": get_utc_tomorrow_start(now),
+            }})
 
         if daily_used >= daily_limit:
             return False
 
-        db.users.update_one(
-            {"_id": ObjectId(owner_user_id)},
-            {"$inc": {"quota.analyze.daily_used": 1}}
-        )
+        collection.update_one(query, {"$inc": {f"{path}.daily_used": 1}})
         return True
 
     return get_anonymous_daily_usage(db, client_ip or "unknown", now) < ANON_DAILY_LIMIT
 
 
-def get_quota_state(db, owner_user_id: str = None, client_ip: str = None) -> dict:
+def get_quota_state(db, owner_user_id: str = None, client_ip: str = None, api_key_id: str = None) -> dict:
     now = utc_now()
+    collection, query, path, default_limit, scope = quota_holder(db, owner_user_id, api_key_id)
 
-    if owner_user_id:
-        user = db.users.find_one({"_id": ObjectId(owner_user_id)}, {"quota": 1}) or {}
-        quota = (user.get("quota") or {}).get("analyze", {}) or {}
+    if collection is not None:
+        holder = collection.find_one(query, {path.split(".")[0]: 1}) or {}
+        quota = holder
+        for part in path.split("."):
+            quota = (quota or {}).get(part) or {}
 
-        limit = int(quota.get("daily_limit", USER_DAILY_LIMIT))
+        limit = int(quota.get("daily_limit", default_limit))
         used = int(quota.get("daily_used", 0))
         reset_at = ensure_utc_aware(quota.get("reset_at"))
 
@@ -91,7 +99,7 @@ def get_quota_state(db, owner_user_id: str = None, client_ip: str = None) -> dic
             used = 0
             reset_at = get_utc_tomorrow_start(now)
 
-        return {"scope": "user", "limit": limit, "used": used,
+        return {"scope": scope, "limit": limit, "used": used,
                 "remaining": max(0, limit - used), "reset_at": reset_at}
 
     used = get_anonymous_daily_usage(db, client_ip or "unknown", now)
@@ -99,3 +107,5 @@ def get_quota_state(db, owner_user_id: str = None, client_ip: str = None) -> dic
     return {"scope": "anonymous", "limit": ANON_DAILY_LIMIT, "used": used,
             "remaining": max(0, ANON_DAILY_LIMIT - used),
             "reset_at": get_utc_tomorrow_start(now)}
+
+

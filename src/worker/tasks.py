@@ -37,6 +37,7 @@ def analyze_received_mail(self, mail_event_id: str):
             db,
             owner_user_id=event.get("owner_user_id"),
             client_ip=event.get("created_ip"),
+            api_key_id=event.get("api_key_id"),
         )
 
         if not allowed:
