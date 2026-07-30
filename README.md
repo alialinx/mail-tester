@@ -103,9 +103,15 @@ SpamAssassin rules that repeat a check already made — SPF, DKIM, DMARC, blackl
 | `GET /check/{address}` | queue the analysis and poll for it |
 | `GET /result/{address}` | newest report, read only, never touches the quota |
 | `GET /limits` | remaining quota |
+| `GET /history`, `GET /history/{id}` | past reports of the signed in account |
+| `POST /keys`, `GET /keys`, `DELETE /keys/{id}` | API keys |
 | `POST /register`, `POST /login`, `GET /me`, `POST /logout` | accounts |
 
 `/check` returns `waiting`, `processing`, `analyzed`, `limit`, `expired` or `error`. Pass `?after=<event_id>` to ignore mails you have already seen.
+
+Requests authenticate one of three ways. A browser sends the JWT from `/login` as a bearer token. A server sends an `X-API-Key` header, created from an account and stored only as a sha256 hash. Anything else is anonymous and limited per IP.
+
+Each scope has its own daily budget: anonymous by IP, accounts on the user record, API keys on the key record. A key can therefore be raised or throttled on its own without touching the owner.
 
 ## Testing without real mail
 
