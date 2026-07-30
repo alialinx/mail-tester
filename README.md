@@ -66,6 +66,9 @@ db.test_emails.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0 })
 db.mail_events.createIndex({ to_address: 1, _id: -1 })
 db.mail_events.createIndex({ created_ip: 1, analyzed_at: 1 })
 db.users.createIndex({ email: 1 }, { unique: true })
+db.analyses.createIndex({ "owner.user_id": 1, _id: -1 })
+db.api_keys.createIndex({ key_hash: 1 }, { unique: true })
+db.api_keys.createIndex({ user_id: 1, revoked_at: 1 })
 ```
 
 The TTL index deletes the address record but never the report, so reports stay readable after the address is gone.
