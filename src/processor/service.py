@@ -69,13 +69,22 @@ def dkim_dns_lookup(name, timeout=5):
 
     try:
         answers = get_resolver().resolve(name.rstrip("."), "TXT")
-    except Exception:
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
         return None
+    except Exception:
+        raise
 
     for rdata in answers:
         return b"".join(rdata.strings)
 
     return None
+
+
+def dkim_key_lookup(name):
+    try:
+        return dkim_dns_lookup(name), None
+    except Exception as e:
+        return None, type(e).__name__
 
 
 spf.DNSLookup = spf_dns_lookup
@@ -84,8 +93,10 @@ spf.DNSLookup = spf_dns_lookup
 def check_spf_record(domain: str):
     try:
         records = get_resolver().resolve(domain, "TXT")
-    except Exception:
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
         return False, []
+    except Exception:
+        return None, []
 
     spf_list = []
     for r in records:
@@ -145,7 +156,8 @@ def get_dkim_tag(record_list: list, tag: str):
 def check_spf(domain: str, sender_ip: str = None, envelope_from: str = None, helo: str = None) -> dict:
     found, records = check_spf_record(domain)
 
-    check = {"status": "ok" if found else "missing", "record": records, "domain": domain,
+    check = {"status": "ok" if found else "unknown" if found is None else "missing",
+             "record": records, "domain": domain,
              "result": None, "explanation": None, "checked_ip": sender_ip, "checked_sender": None}
 
     if not found or not sender_ip:
@@ -186,7 +198,12 @@ def check_dkim(domain: str, raw_email) -> dict:
 
     signing_domain = check["signing_domain"] or domain
 
-    record = dkim_dns_lookup(f"{check['selector']}._domainkey.{signing_domain}")
+    record, lookup_error = dkim_key_lookup(f"{check['selector']}._domainkey.{signing_domain}")
+
+    if lookup_error:
+        check["status"] = "unknown"
+        check["error"] = lookup_error
+        return check
 
     if not record:
         check["status"] = "no_key"
@@ -244,6 +261,7 @@ def parse_dmarc_tags(record: str) -> dict:
 
 def check_dmarc_record(domain: str):
     candidate = (domain or "").strip(".")
+    failed = False
 
     while candidate.count(".") >= 1:
         try:
@@ -251,21 +269,23 @@ def check_dmarc_record(domain: str):
             record = next((t for t in [_txt_to_str(r) for r in answers] if t.lower().startswith("v=dmarc1")), None)
             if record:
                 return True, record, candidate
-        except Exception:
+        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
             pass
+        except Exception:
+            failed = True
 
         if candidate.count(".") == 1:
             break
         candidate = candidate.split(".", 1)[1]
 
-    return False, None, None
+    return (None if failed else False), None, None
 
 
 def check_dmarc(domain: str, spf_check: dict, dkim_check: dict) -> dict:
     found, record, record_domain = check_dmarc_record(domain)
     tags = parse_dmarc_tags(record)
 
-    check = {"status": "ok" if found else "missing", "record": record, "domain": domain,
+    check = {"status": "ok" if found else "unknown" if found is None else "missing", "record": record, "domain": domain,
              "record_domain": record_domain, "policy": tags.get("p"), "subdomain_policy": tags.get("sp"),
              "percent": tags.get("pct"), "reports_to": tags.get("rua"),
              "adkim": (tags.get("adkim") or "r").lower(), "aspf": (tags.get("aspf") or "r").lower(),
@@ -281,10 +301,16 @@ def check_dmarc(domain: str, spf_check: dict, dkim_check: dict) -> dict:
     if dkim_passed:
         check["dkim_aligned"] = domains_aligned(domain, (dkim_check or {}).get("signing_domain"), check["adkim"])
 
-    if not found:
+    evaluated = (spf_check or {}).get("result") is not None or (dkim_check or {}).get("verified") is not None
+
+    if found is None:
+        check["result"] = "unknown"
+    elif not found:
         check["result"] = "none"
     elif check["spf_aligned"] or check["dkim_aligned"]:
         check["result"] = "pass"
+    elif not evaluated:
+        check["result"] = "unknown"
 
     return check
 
@@ -301,15 +327,20 @@ def check_rdns(ip: str) -> dict:
     try:
         answer = get_resolver().resolve(reversed_ip, "PTR")
         hostname = str(answer[0]).rstrip(".")
-    except Exception:
-        return {"success": False, "hostname": None, "forward_ips": [], "matches": False}
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+        return {"success": False, "hostname": None, "forward_ips": [], "matches": False, "error": None}
+    except Exception as e:
+        return {"success": None, "hostname": None, "forward_ips": [], "matches": None, "error": type(e).__name__}
 
     try:
         forward_ips = [str(r.address) for r in get_resolver().resolve(hostname, "A")]
+        matches = ip in forward_ips
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+        forward_ips, matches = [], False
     except Exception:
-        forward_ips = []
+        forward_ips, matches = [], None
 
-    return {"success": True, "hostname": hostname, "forward_ips": forward_ips, "matches": ip in forward_ips}
+    return {"success": True, "hostname": hostname, "forward_ips": forward_ips, "matches": matches, "error": None}
 
 DNSBL_LISTS = [
     "zen.spamhaus.org",
@@ -341,6 +372,16 @@ DNSBL_LISTS = [
     "all.s5h.net",
 ]
 
+def _domain_dnsbl_status(addresses: list) -> str:
+    for address in addresses:
+        if address.startswith("127.255.255.") or address == "127.0.0.1":
+            return "blocked"
+    for address in addresses:
+        if address.startswith("127.0.1.") or address in ("127.0.0.2", "127.0.0.4", "127.0.0.8", "127.0.0.14"):
+            return "listed"
+    return "reputation"
+
+
 DOMAIN_DNSBL_LISTS = [
     "dbl.spamhaus.org",
     "multi.uribl.com",
@@ -349,16 +390,9 @@ DOMAIN_DNSBL_LISTS = [
 ]
 
 
-def _dnsbl_status(addresses: list) -> str:
-    for address in addresses:
-        if address.startswith("127.255.255.") or address == "127.0.0.1":
-            return "blocked"
-    return "listed"
-
-
 def check_domain_blacklists(domains: list) -> dict:
     targets = [d for d in dict.fromkeys(domains or []) if d][:URIBL_MAX_DOMAINS]
-    summary = {"listed": 0, "not_listed": 0, "timeout": 0, "blocked": 0, "error": 0}
+    summary = dict(EMPTY_SUMMARY)
 
     if not targets:
         return {"checked": 0, "results": {}, "listed": [], "summary": summary}
@@ -368,7 +402,7 @@ def check_domain_blacklists(domains: list) -> dict:
     def query_one(domain: str, dnsbl: str):
         try:
             answer = resolver.resolve(f"{domain}.{dnsbl}", "A")
-            return domain, dnsbl, _dnsbl_status([str(r.address) for r in answer])
+            return domain, dnsbl, _domain_dnsbl_status([str(r.address) for r in answer])
         except dns.resolver.NXDOMAIN:
             return domain, dnsbl, "not_listed"
         except (dns.resolver.Timeout, dns.exception.Timeout):
@@ -392,9 +426,34 @@ def check_domain_blacklists(domains: list) -> dict:
     return {"checked": len(jobs), "results": results, "listed": listed, "summary": summary}
 
 
+DNSBL_LISTED_CODES = {
+    "zen.spamhaus.org": ("127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6",
+                         "127.0.0.7", "127.0.0.9", "127.0.0.10", "127.0.0.11"),
+    "cbl.abuseat.org": ("127.0.0.2", "127.0.0.4"),
+}
+
+DEFAULT_LISTED_CODES = ("127.0.0.2",)
+
+EMPTY_SUMMARY = {"listed": 0, "not_listed": 0, "reputation": 0, "timeout": 0, "blocked": 0, "error": 0}
+
+
+def _ip_dnsbl_status(dnsbl: str, addresses: list) -> str:
+    for address in addresses:
+        if address.startswith("127.255.255."):
+            return "blocked"
+
+    listed_codes = DNSBL_LISTED_CODES.get(dnsbl, DEFAULT_LISTED_CODES)
+
+    for address in addresses:
+        if address in listed_codes:
+            return "listed"
+
+    return "reputation"
+
+
 def check_blacklists(ip: str) -> dict:
     if not ip:
-        return {"checked": 0, "results": {}, "summary": {"listed": 0, "not_listed": 0, "timeout": 0, "blocked": 0, "error": 0}}
+        return {"checked": 0, "results": {}, "summary": dict(EMPTY_SUMMARY)}
 
     reversed_ip = ".".join(ip.split(".")[::-1])
 
@@ -402,33 +461,34 @@ def check_blacklists(ip: str) -> dict:
 
     dnsbls = DNSBL_LISTS[:DNSBL_MAX_LISTS]
     results = {}
+    answers = {}
 
     def query_one(dnsbl: str):
         q = f"{reversed_ip}.{dnsbl}"
         try:
             answer = resolver.resolve(q, "A")
-            for rdata in answer:
-                if str(rdata.address).startswith("127.255.255."):
-                    return dnsbl, "blocked"
-            return dnsbl, "listed"
+            addresses = [str(rdata.address) for rdata in answer]
+            return dnsbl, _ip_dnsbl_status(dnsbl, addresses), addresses
         except dns.resolver.NXDOMAIN:
-            return dnsbl, "not_listed"
+            return dnsbl, "not_listed", []
         except (dns.resolver.Timeout, dns.exception.Timeout):
-            return dnsbl, "timeout"
+            return dnsbl, "timeout", []
         except Exception:
-            return dnsbl, "error"
+            return dnsbl, "error", []
 
     with ThreadPoolExecutor(max_workers=max(1, DNSBL_CONCURRENCY)) as ex:
         futures = [ex.submit(query_one, dnsbl) for dnsbl in dnsbls]
         for fut in as_completed(futures):
-            dnsbl, status = fut.result()
+            dnsbl, status, addresses = fut.result()
             results[dnsbl] = status
+            if addresses:
+                answers[dnsbl] = addresses
 
-    summary = {"listed": 0, "not_listed": 0, "timeout": 0, "blocked": 0, "error": 0}
+    summary = dict(EMPTY_SUMMARY)
     for st in results.values():
         summary[st] += 1
 
-    return {"checked": len(results), "results": results, "summary": summary}
+    return {"checked": len(results), "results": results, "answers": answers, "summary": summary}
 
 def get_mx_record(domain: str):
     try:

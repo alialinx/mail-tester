@@ -118,7 +118,9 @@ def inspect_content(msg, subject: str = None) -> dict:
     letters = [c for c in subject_value if c.isalpha()]
 
     return {
-        "preview": visible_text[:2000],
+        "preview": visible_text[:20000],
+        "plain": plain[:40000],
+        "html": html[:80000],
         "has_plain": bool(plain.strip()),
         "has_html": bool(html.strip()),
         "text_length": text_length,

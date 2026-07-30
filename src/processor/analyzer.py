@@ -59,7 +59,9 @@ class Analyzer:
         spf = check_spf(self.domain, self.public_ip, self.envelope_from, helo)
         checks["spf"] = spf
 
-        if spf["status"] == "missing":
+        if spf["status"] == "unknown":
+            pass
+        elif spf["status"] == "missing":
             self.score.minus(2.0, "SPF record not found", code="SPF_MISSING", severity="high",
                              how_to_fix=f"Add an SPF TXT record for {self.domain}. Example: v=spf1 a mx ~all")
         elif spf["result"] and spf["result"] != "pass":
@@ -71,7 +73,9 @@ class Analyzer:
         dkim = check_dkim(self.domain, self.raw_email)
         checks["dkim"] = dkim
 
-        if dkim["status"] == "missing":
+        if dkim["status"] == "unknown":
+            pass
+        elif dkim["status"] == "missing":
             self.score.minus(1.5, "DKIM signature not found", code="DKIM_MISSING", severity="high",
                              how_to_fix=f"Sign outgoing mail with DKIM and publish the selector at "
                                         f"<selector>._domainkey.{self.domain}.")
@@ -91,7 +95,9 @@ class Analyzer:
         dmarc = check_dmarc(self.domain, spf, dkim)
         checks["dmarc"] = dmarc
 
-        if dmarc["status"] == "missing":
+        if dmarc["status"] == "unknown" or dmarc["result"] == "unknown":
+            pass
+        elif dmarc["status"] == "missing":
             self.score.minus(1.0, "DMARC record not found", code="DMARC_MISSING", severity="medium",
                              how_to_fix=f"Add a DMARC TXT record at _dmarc.{self.domain}. "
                                         f"Start with p=none, then enforce.")
@@ -163,14 +169,18 @@ class Analyzer:
 
         if self.public_ip:
             rdns = check_rdns(self.public_ip)
-            rdns["status"] = "ok" if rdns.get("matches") else "warning" if rdns.get("success") else "missing"
             rdns["skipped"] = False
+            rdns["status"] = ("unknown" if rdns.get("success") is None
+                              else "ok" if rdns.get("matches")
+                              else "warning" if rdns.get("success") else "missing")
             checks["rdns"] = rdns
 
-            if not rdns.get("success"):
+            if rdns.get("success") is None:
+                pass
+            elif not rdns.get("success"):
                 self.score.minus(0.5, "Reverse DNS record not found", code="RDNS_MISSING", severity="medium",
                                  how_to_fix=f"Ask the network owner to add a PTR record for {self.public_ip}.")
-            elif not rdns.get("matches"):
+            elif rdns.get("matches") is False:
                 self.score.minus(0.5, "Reverse DNS is not forward confirmed", code="RDNS_NO_MATCH", severity="medium",
                                  details=f"{rdns.get('hostname')} -> {', '.join(rdns.get('forward_ips') or []) or 'no A record'}",
                                  how_to_fix=f"Make {rdns.get('hostname')} resolve back to {self.public_ip}.")
@@ -276,6 +286,8 @@ class Analyzer:
             "to": headers.get("To"),
             "subject": headers.get("Subject"),
             "body": content.get("preview"),
+            "plain": content.get("plain"),
+            "html": content.get("html"),
             "message_id": headers.get("Message-ID"),
             "date": headers.get("Date"),
         }
